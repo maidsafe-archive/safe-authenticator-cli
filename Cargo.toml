@@ -1,0 +1,7 @@
+[package]
+name = "safe_auth_cli"
+version = "0.0.1"
+authors = ["MaidSafe Developers <dev@maidsafe.net>"]
+description = "SAFE Authenticator CLI"
+
+[dependencies]
