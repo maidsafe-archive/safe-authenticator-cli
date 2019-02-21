@@ -14,3 +14,8 @@ safe_authenticator = { git = "https://github.com/hunterlester/safe_client_libs",
 testing = ["safe_authenticator/testing"]
 use-mock-routing = ["safe_authenticator/use-mock-routing"]
 default = ["use-mock-routing"]
+
+[dev-dependencies.cargo-husky]
+version = "1"
+default-features = false # Disable features which are enabled by default
+features = ["precommit-hook","user-hooks"]
