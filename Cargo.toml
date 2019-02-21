@@ -1,7 +1,8 @@
 [package]
 name = "safe_auth"
 version = "0.0.1"
-authors = ["hunterlester <guilfordhunter@gmail.com>","Gabrial Vignotti <??>","Josh Wilson <joshuef@gmail.com>"]
+description = "SAFE Authenticator CLI"
+authors = ["Hunter Lester <guilfordhunter@gmail.com>", "bochaco <gabrielviganotti@gmail.com>", "Josh Wilson <joshuef@gmail.com>"]
 edition = "2018"
 
 [dependencies]

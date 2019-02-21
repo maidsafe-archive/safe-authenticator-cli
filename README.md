@@ -4,21 +4,28 @@ This crate implements a CLI for the [safe_authenticator](https://github.com/maid
 
 ## Build
 
-Make sure you are using `rustc v1.30.0`:
+Make sure you are using `rustc v1.32.0`:
 ```
 $ cargo build
+```
+
+## Create a SAFE Network account
+
+```
+$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> create --invite-token <token>
+Account successfully created!
 ```
 
 ## Log in the SAFE Network
 
 ```
-$ safe_auth_cli --secret <secret> --pwd <password>
+$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password>
 Logged-in successfully!
 ```
 
 ## Authorising an application
 
 ```
-$ auth_cli --secret <secret> --pwd <password> --auth <unregistered auth req>
+$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> auth --req <auth req URI/string>
 Auth response: <auth response>
 ```
