@@ -1,7 +1,20 @@
-use log::{info, error};
 use env_logger;
+use log::{debug, error, info};
+use safe_authenticator::app_auth::authenticate;
+use safe_authenticator::Authenticator;
 use structopt::StructOpt;
-use safe_authenticator::{Authenticator};
+
+use safe_authenticator::ipc::{decode_ipc_msg, decode_share_mdata_req, encode_response};
+
+use safe_core::ipc::req::IpcReq;
+use safe_core::ipc::resp::IpcResp;
+use safe_core::ipc::{decode_msg, /*IpcError,*/ IpcMsg};
+use safe_core::FutureExt;
+// use safe_core::ffi::ipc::resp::MetadataResponse;
+use futures::future::Future;
+
+use std::thread;
+use std::time::Duration;
 
 #[derive(StructOpt, Debug)]
 enum SubCommands {
@@ -18,7 +31,7 @@ enum SubCommands {
         /// The authorisation request URI or string
         #[structopt(short = "r", long = "req")]
         req: String,
-    }
+    },
 }
 
 #[derive(StructOpt, Debug)]
@@ -36,20 +49,22 @@ struct CmdArgs {
 
 fn main() {
     env_logger::init();
-    info!("Starting Authenticator");
+    info!("Starting Authenticator...");
 
     let args = CmdArgs::from_args();
-    info!("Passed args: {:?}", args);
+    debug!("Passed args: {:?}", args);
 
     match args.cmd {
+        None => {
+            log_in(&args.secret, &args.password).unwrap();
+        }
         Some(SubCommands::Invite { invite }) => {
-            create_acc(&invite, &args.secret, &args.password)
-        },
+            create_acc(&invite, &args.secret, &args.password);
+        }
         Some(SubCommands::Auth { req }) => {
-            error!("Authorisation not supported yet: {}", req);
-            log_in(&args.secret, &args.password);
-        },
-        None => log_in(&args.secret, &args.password),
+            let authenticator = log_in(&args.secret, &args.password).unwrap();
+            authorise_app(authenticator, &req);
+        }
     }
 }
 
@@ -61,10 +76,100 @@ fn create_acc(invite: &str, secret: &str, password: &str) {
     }
 }
 
-fn log_in(secret: &str, password: &str) {
+fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
     info!("Attempting to log in...");
     match Authenticator::login(secret, password, || ()) {
-        Ok(_) => info!("Logged-in successfully!"),
-        Err(err) => error!("Failed to log in: {:?}", err),
+        Ok(auth) => {
+            info!("Logged-in successfully!");
+            Ok(auth)
+        }
+        Err(err) => Err(format!("Failed to log in: {:?}", err)),
     }
+}
+
+fn authorise_app(authenticator: Authenticator, req: &str) {
+    info!("Attempting to authorise application...");
+    let req_msg = decode_msg(req).unwrap();
+    debug!("Auth request string decoded: {:?}", req_msg);
+
+    authenticator
+        .send(move |client| {
+            let client_clone = client.clone();
+            decode_ipc_msg(client, req_msg)
+                .and_then(move |ipc_msg| match ipc_msg {
+                    Ok(IpcMsg::Req {
+                        req: IpcReq::Auth(auth_req),
+                        req_id,
+                    }) => {
+                        info!("Request was recognised as a general app auth request");
+                        debug!("Decoded request (req_id={:?}): {:?}", req_id, auth_req);
+
+                        authenticate(&client_clone, auth_req)
+                            .and_then(move |auth_granted| {
+                                info!("Encoding response...");
+                                let resp = encode_response(&IpcMsg::Resp {
+                                    req_id,
+                                    resp: IpcResp::Auth(Ok(auth_granted)),
+                                })?;
+                                info!("Response generated: {:?}", resp);
+                                Ok(())
+                            })
+                            .map_err(move |err| error!("Failed to authenticate: {:?}", err))
+                            .into_box();
+
+                        Ok(())
+                    }
+                    Ok(IpcMsg::Req {
+                        req: IpcReq::Containers(_cont_req),
+                        req_id: _,
+                    }) => {
+                        info!("Request was recognised as a containers auth request");
+                        Ok(())
+                    }
+                    Ok(IpcMsg::Req {
+                        req: IpcReq::Unregistered(_extra_data),
+                        req_id: _,
+                    }) => {
+                        info!("Request was recognised as an unregistered auth request");
+                        Ok(())
+                    }
+                    Ok(IpcMsg::Req {
+                        req: IpcReq::ShareMData(share_mdata_req),
+                        req_id: _,
+                    }) => {
+                        info!("Request was recognised as a share MD auth request");
+                        decode_share_mdata_req(&client_clone, &share_mdata_req).and_then(
+                            move |metadata_cont| {
+                                debug!("MDs requested for sharing...");
+                                for metadata in metadata_cont {
+                                    if let Some(_metadata) = metadata {
+                                        debug!("MD");
+                                    } else {
+                                        error!("MD invalid");
+                                    }
+                                }
+                                Ok(())
+                            },
+                        );
+                        Ok(())
+                    }
+                    Err((error_code, description, _err)) => {
+                        error!(
+                            "Failed decoding the auth request: {} - {:?}",
+                            error_code, description
+                        );
+                        Ok(())
+                    }
+                    Ok(IpcMsg::Resp { .. }) | Ok(IpcMsg::Revoked { .. }) | Ok(IpcMsg::Err(..)) => {
+                        error!("The request was not recognised as a valid auth request");
+                        Ok(())
+                    }
+                })
+                .map_err(move |err| error!("Failed to authorise application: {:?}", err))
+                .into_box()
+                .into()
+        })
+        .unwrap();
+
+    thread::sleep(Duration::from_secs(2));
 }
