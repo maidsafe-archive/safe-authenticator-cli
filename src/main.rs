@@ -13,9 +13,6 @@ use safe_core::FutureExt;
 // use safe_core::ffi::ipc::resp::MetadataResponse;
 use futures::future::Future;
 
-use std::thread;
-use std::time::Duration;
-
 #[derive(StructOpt, Debug)]
 enum SubCommands {
     #[structopt(name = "create")]
@@ -121,21 +118,21 @@ fn authorise_app(authenticator: Authenticator, req: &str) {
                     }
                     Ok(IpcMsg::Req {
                         req: IpcReq::Containers(_cont_req),
-                        req_id: _,
+                        ..
                     }) => {
                         info!("Request was recognised as a containers auth request");
                         Ok(())
                     }
                     Ok(IpcMsg::Req {
                         req: IpcReq::Unregistered(_extra_data),
-                        req_id: _,
+                        ..
                     }) => {
                         info!("Request was recognised as an unregistered auth request");
                         Ok(())
                     }
                     Ok(IpcMsg::Req {
                         req: IpcReq::ShareMData(share_mdata_req),
-                        req_id: _,
+                        ..
                     }) => {
                         info!("Request was recognised as a share MD auth request");
                         decode_share_mdata_req(&client_clone, &share_mdata_req).and_then(
@@ -168,8 +165,10 @@ fn authorise_app(authenticator: Authenticator, req: &str) {
                 .map_err(move |err| error!("Failed to authorise application: {:?}", err))
                 .into_box()
                 .into()
-        })
-        .unwrap();
 
-    thread::sleep(Duration::from_secs(2));
+        })
+        .and_then( |_| {
+			debug!("After matching");
+			Ok(())
+		} ).unwrap()
 }
