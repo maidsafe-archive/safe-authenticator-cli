@@ -1,17 +1,15 @@
 use env_logger;
 use log::{debug, error, info};
 use safe_authenticator::app_auth::authenticate;
+use safe_authenticator::test_utils::{try_run, run};
 use safe_authenticator::Authenticator;
 use structopt::StructOpt;
 
-use safe_authenticator::ipc::{decode_ipc_msg, decode_share_mdata_req, encode_response};
+use safe_authenticator::ipc::{decode_ipc_msg, /*decode_share_mdata_req,*/ encode_response};
 
 use safe_core::ipc::req::IpcReq;
 use safe_core::ipc::resp::IpcResp;
-use safe_core::ipc::{decode_msg, /*IpcError,*/ IpcMsg};
-use safe_core::FutureExt;
-// use safe_core::ffi::ipc::resp::MetadataResponse;
-use futures::future::Future;
+use safe_core::ipc::{decode_msg, IpcMsg};
 
 #[derive(StructOpt, Debug)]
 enum SubCommands {
@@ -89,86 +87,71 @@ fn authorise_app(authenticator: Authenticator, req: &str) {
     let req_msg = decode_msg(req).unwrap();
     debug!("Auth request string decoded: {:?}", req_msg);
 
-    authenticator
-        .send(move |client| {
-            let client_clone = client.clone();
-            decode_ipc_msg(client, req_msg)
-                .and_then(move |ipc_msg| match ipc_msg {
-                    Ok(IpcMsg::Req {
-                        req: IpcReq::Auth(auth_req),
-                        req_id,
-                    }) => {
-                        info!("Request was recognised as a general app auth request");
-                        debug!("Decoded request (req_id={:?}): {:?}", req_id, auth_req);
+    let ipc_req = run(&authenticator, move |client| decode_ipc_msg(client, req_msg));
+    match ipc_req {
+        Ok(IpcMsg::Req {
+            req: IpcReq::Auth(auth_req),
+            req_id
+        }) => {
+            info!("Request was recognised as a general app auth request");
+            debug!("Decoded request (req_id={:?}): {:?}", req_id, auth_req);
+            let auth_granted = try_run(&authenticator, move |client| {
+                authenticate(client, auth_req)
+            }).unwrap();
 
-                        authenticate(&client_clone, auth_req)
-                            .and_then(move |auth_granted| {
-                                info!("Encoding response...");
-                                let resp = encode_response(&IpcMsg::Resp {
-                                    req_id,
-                                    resp: IpcResp::Auth(Ok(auth_granted)),
-                                })?;
-                                info!("Response generated: {:?}", resp);
-                                Ok(())
-                            })
-                            .map_err(move |err| error!("Failed to authenticate: {:?}", err))
-                            .into_box();
+            info!("Encoding response...");
+            let resp = encode_response(&IpcMsg::Resp {
+                req_id,
+                resp: IpcResp::Auth(Ok(auth_granted)),
+            }).unwrap();
+            info!("Response generated: {:?}", resp);
 
-                        Ok(())
-                    }
-                    Ok(IpcMsg::Req {
-                        req: IpcReq::Containers(_cont_req),
-                        ..
-                    }) => {
-                        info!("Request was recognised as a containers auth request");
-                        Ok(())
-                    }
-                    Ok(IpcMsg::Req {
-                        req: IpcReq::Unregistered(_extra_data),
-                        ..
-                    }) => {
-                        info!("Request was recognised as an unregistered auth request");
-                        Ok(())
-                    }
-                    Ok(IpcMsg::Req {
-                        req: IpcReq::ShareMData(share_mdata_req),
-                        ..
-                    }) => {
-                        info!("Request was recognised as a share MD auth request");
-                        decode_share_mdata_req(&client_clone, &share_mdata_req).and_then(
-                            move |metadata_cont| {
-                                debug!("MDs requested for sharing...");
-                                for metadata in metadata_cont {
-                                    if let Some(_metadata) = metadata {
-                                        debug!("MD");
-                                    } else {
-                                        error!("MD invalid");
-                                    }
-                                }
-                                Ok(())
-                            },
-                        );
-                        Ok(())
-                    }
-                    Err((error_code, description, _err)) => {
-                        error!(
-                            "Failed decoding the auth request: {} - {:?}",
-                            error_code, description
-                        );
-                        Ok(())
-                    }
-                    Ok(IpcMsg::Resp { .. }) | Ok(IpcMsg::Revoked { .. }) | Ok(IpcMsg::Err(..)) => {
-                        error!("The request was not recognised as a valid auth request");
-                        Ok(())
-                    }
-                })
-                .map_err(move |err| error!("Failed to authorise application: {:?}", err))
-                .into_box()
-                .into()
+            ()
+        },
+        Ok(IpcMsg::Req {
+            req: IpcReq::Containers(_cont_req),
+            ..
+        }) => {
+            info!("Request was recognised as a containers auth request");
+            ()
+        },
+        Ok(IpcMsg::Req {
+            req: IpcReq::Unregistered(_extra_data),
+            ..
+        }) => {
+            info!("Request was recognised as an unregistered auth request");
+            ()
+        },
+        Ok(IpcMsg::Req {
+            req: IpcReq::ShareMData(_share_mdata_req),
+            ..
+        }) => {
+            info!("Request was recognised as a share MD auth request");
+            /*
+            let metadata_cont = try_run(&authenticator, move |client| {
+                decode_share_mdata_req(client, &share_mdata_req)
+            }).unwrap();
 
-        })
-        .and_then( |_| {
-			debug!("After matching");
-			Ok(())
-		} ).unwrap()
+            debug!("MDs requested for sharing...");
+            for metadata in metadata_cont {
+                if let Some(_metadata) = metadata {
+                    debug!("MD");
+                } else {
+                    error!("MD invalid");
+                }
+            }*/
+            ()
+        },
+        Err((error_code, description, _err)) => {
+            error!(
+                "Failed decoding the auth request: {} - {:?}",
+                error_code, description
+            );
+            ()
+        },
+        Ok(IpcMsg::Resp { .. }) | Ok(IpcMsg::Revoked { .. }) | Ok(IpcMsg::Err(..)) => {
+            error!("The request was not recognised as a valid auth request");
+            ()
+        }
+    };
 }
