@@ -6,11 +6,14 @@ use safe_authenticator::test_utils::{run as utils_run, try_run};
 use safe_authenticator::Authenticator;
 use structopt::StructOpt;
 
-use safe_authenticator::ipc::{decode_ipc_msg, /*decode_share_mdata_req,*/ encode_response};
+use safe_authenticator::ipc::{ decode_ipc_msg, /*decode_share_mdata_req,*/ encode_response };
 
+use safe_core::client as safe_core_client;
 use safe_core::ipc::req::IpcReq;
+use safe_core::ipc::IpcError;
 use safe_core::ipc::resp::IpcResp;
 use safe_core::ipc::{decode_msg, IpcMsg};
+use safe_core::ipc as safe_core_ipc;
 
 #[derive(StructOpt, Debug)]
 pub enum SubCommands {
@@ -126,10 +129,23 @@ fn authorise_app(authenticator: Authenticator, req: &str) {
             ()
         }
         Ok(IpcMsg::Req {
-            req: IpcReq::Unregistered(_extra_data),
-            ..
+            req: IpcReq::Unregistered(user_data),
+            req_id
         }) => {
             info!("Request was recognised as an unregistered auth request");
+            debug!("Decoded request (req_id={:?}): {:?}", req_id, user_data);
+
+			let bootstrap_cfg = safe_core_client::bootstrap_config().unwrap();
+
+            info!("Encoding response... {:?}", bootstrap_cfg);
+
+			let resp = encode_response(&IpcMsg::Resp {
+				req_id,
+				resp: IpcResp::Unregistered( Ok(bootstrap_cfg) ),
+			});
+
+            info!("Response generated: {:?}", resp);
+
             ()
         }
         Ok(IpcMsg::Req {
