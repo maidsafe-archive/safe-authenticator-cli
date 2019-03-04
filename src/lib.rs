@@ -84,7 +84,21 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn create_acc(invite: &str, secret: &str, password: &str) -> Result<Authenticator, String> {
+/// # Create Account
+/// Creates a new account on the SAFE Network.
+/// Returns an error if an account exists or if there was some problem during the account creation process.
+///
+/// Note: This does _not_ perform any strength checks on the strings used to create the account.
+///
+/// ## Example
+/// ```
+/// # use safe_auth::create_acc;
+/// # use safe_authenticator::Authenticator;
+/// let auth = create_acc("aninvite", "aSecret", "aPassword");
+/// # // Simply check we did not get a panic...
+/// # assert!( true )
+///```
+pub fn create_acc(invite: &str, secret: &str, password: &str) -> Result<Authenticator, String> {
     info!("Attempting to create a SAFE account...");
     match Authenticator::create_acc(secret, password, invite, || ()) {
         Ok(auth) => {
@@ -95,7 +109,39 @@ fn create_acc(invite: &str, secret: &str, password: &str) -> Result<Authenticato
     }
 }
 
-fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
+/// # Log in
+///
+/// Using an account already created, you can log in to the SAFE Network and return an `Authenticator` instance.
+///
+/// ## Example
+/// ```
+/// # use safe_auth::create_acc;
+/// # use safe_auth::log_in;
+/// # use safe_authenticator::Authenticator;
+/// // with an already existing account:
+/// let logged_in = log_in("aSecret", "aPassword");
+/// match logged_in {
+///    Ok(_) => assert!(true), // This should pass
+///    Err(_) => assert!(false)
+/// }
+///```
+/// ## Error Example
+/// If the account does not exist, the function will return an appropriate error:
+///```
+/// # use safe_auth::create_acc;
+/// # use safe_auth::log_in;
+/// # use safe_core::CoreError;
+/// # use safe_authenticator::Authenticator;
+/// let not_logged_in = log_in("non", "existant");
+/// match not_logged_in {
+///    Ok(_) => assert!(false), // This should not pass
+///    Err(message) => {
+///         assert!(message.contains("No such account"));
+///     }
+/// }
+///```
+///
+pub fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
     info!("Attempting to log in...");
     match Authenticator::login(secret, password, || ()) {
         Ok(auth) => {
