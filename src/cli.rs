@@ -1,7 +1,7 @@
 use std::error::Error;
-use log::{debug, error, info};
+// use log::{debug, error, info};
 
-use safe_auth::{authorise_app, create_acc, log_in, acc_info, authed_apps};
+use safe_auth::{acc_info, authed_apps, authorise_app, create_acc, log_in};
 
 use structopt::StructOpt;
 
@@ -29,8 +29,7 @@ pub struct CmdArgs {
     #[structopt(short = "s", long = "secret")]
     secret: String,
     /// The SAFE account's password
-    #[structopt(short = "p", long = "password")]//    catch_unwind_cb(user_data.0, o_cb, || -> Result<_, AuthError> {
-
+    #[structopt(short = "p", long = "password")]
     password: String,
     /// subcommands
     #[structopt(subcommand)]
@@ -47,21 +46,17 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let args = CmdArgs::from_args();
 
     let authenticator = match args.cmd {
-        None => {
-            log_in(&args.secret, &args.password)?
-        }
-        Some(SubCommands::Invite { invite }) => {
-            create_acc(&invite, &args.secret, &args.password)?
-        }
+        None => log_in(&args.secret, &args.password)?,
+        Some(SubCommands::Invite { invite }) => create_acc(&invite, &args.secret, &args.password)?,
         Some(SubCommands::Auth { req }) => {
             let authenticator = log_in(&args.secret, &args.password)?;
-            authorise_app(&authenticator, &req);
+            authorise_app(&authenticator, &req)?;
             authenticator
         }
     };
 
     if args.balance {
-        acc_info(&authenticator);
+        acc_info(&authenticator)?;
     };
 
     if args.apps {
