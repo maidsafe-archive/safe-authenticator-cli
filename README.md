@@ -14,6 +14,11 @@ Make sure you are using `rustc v1.32.0`:
 $ cargo build
 ```
 
+## Run doc tests
+```
+$ cargo test --doc
+```
+
 ## Create a SAFE Network account
 ```
 $ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> create --invite-token <token>

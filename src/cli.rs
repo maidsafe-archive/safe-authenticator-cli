@@ -46,21 +46,21 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let args = CmdArgs::from_args();
 
     let authenticator = match args.cmd {
-        None => {
-            let authenticator = log_in(&args.secret, &args.password)?;
+        None => log_in(&args.secret, &args.password).and_then(|auth| {
             info!("Logged-in successfully!");
-            authenticator
-        }
-        Some(SubCommands::Invite { invite }) => {
-            let authenticator = create_acc(&invite, &args.secret, &args.password)?;
+            Ok(auth)
+        })?,
+        Some(SubCommands::Invite { invite }) => create_acc(&invite, &args.secret, &args.password)
+            .and_then(|auth| {
             info!("Account created successfully!");
-            authenticator
-        }
+            Ok(auth)
+        })?,
         Some(SubCommands::Auth { req }) => {
-            let authenticator = log_in(&args.secret, &args.password)?;
-            let resp = authorise_app(&authenticator, &req)?;
-            info!("Auth response generated: {:?}", resp);
-            authenticator
+            log_in(&args.secret, &args.password).and_then(|auth| {
+                let resp = authorise_app(&auth, &req)?;
+                info!("Auth response generated: {:?}", resp);
+                Ok(auth)
+            })?
         }
     };
 
