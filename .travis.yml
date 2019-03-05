@@ -1,0 +1,26 @@
+env:
+  global:
+    - RUST_BACKTRACE=1
+    # - RUSTFLAGS="-C opt-level=2 -C codegen-units=8"
+    - PATH=$PATH:$HOME/.cargo/bin
+language: rust
+rust:
+  - 1.32.0
+os:
+  - linux
+  - osx
+  - windows
+
+sudo: false
+cache:
+  # Double the default timeout.
+  timeout: 360
+  cargo: true
+  directories:
+    - "${HOME}/.cache/master"
+
+install :
+  - cargo check
+
+script :
+  - cargo test
