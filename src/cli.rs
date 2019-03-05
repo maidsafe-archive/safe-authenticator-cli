@@ -1,7 +1,7 @@
+use log::info;
 use std::error::Error;
-use log::{debug, error, info};
 
-use safe_auth::{authorise_app, create_acc, log_in, acc_info, authed_apps};
+use safe_auth::{acc_info, authed_apps, authorise_app, create_acc, log_in};
 
 use structopt::StructOpt;
 
@@ -29,8 +29,7 @@ pub struct CmdArgs {
     #[structopt(short = "s", long = "secret")]
     secret: String,
     /// The SAFE account's password
-    #[structopt(short = "p", long = "password")]//    catch_unwind_cb(user_data.0, o_cb, || -> Result<_, AuthError> {
-
+    #[structopt(short = "p", long = "password")]
     password: String,
     /// subcommands
     #[structopt(subcommand)]
@@ -48,24 +47,34 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
     let authenticator = match args.cmd {
         None => {
-            log_in(&args.secret, &args.password)?
+            let authenticator = log_in(&args.secret, &args.password)?;
+            info!("Logged-in successfully!");
+            authenticator
         }
         Some(SubCommands::Invite { invite }) => {
-            create_acc(&invite, &args.secret, &args.password)?
+            let authenticator = create_acc(&invite, &args.secret, &args.password)?;
+            info!("Account created successfully!");
+            authenticator
         }
         Some(SubCommands::Auth { req }) => {
             let authenticator = log_in(&args.secret, &args.password)?;
-            authorise_app(&authenticator, &req);
+            let resp = authorise_app(&authenticator, &req)?;
+            info!("Auth response generated: {:?}", resp);
             authenticator
         }
     };
 
     if args.balance {
-        acc_info(&authenticator);
+        let (mutations_done, mutations_available) = acc_info(&authenticator)?;
+        info!(
+            "Account's current balance (PUTs done/available): {}/{}",
+            mutations_done, mutations_available
+        );
     };
 
     if args.apps {
-        authed_apps(&authenticator);
+        let authed_apps = authed_apps(&authenticator)?;
+        info!("Authorised applications: {:?}", authed_apps);
     };
 
     Ok(())
