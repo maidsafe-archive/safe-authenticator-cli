@@ -20,7 +20,6 @@ mod cli_integration {
             &rand_string,
             "--password",
             &rand_string,
-            "create",
             "--invite-token",
             "aaa",
         ])
@@ -46,7 +45,6 @@ mod cli_integration {
             &rand_string,
             "--password",
             &rand_string,
-            "create",
             "--invite-token",
             "aaa",
         ])
@@ -61,7 +59,6 @@ mod cli_integration {
                 &rand_string,
                 "--password",
                 &rand_string,
-                "auth",
                 "-r",
                 &UNAUTHED_REQ,
             ])

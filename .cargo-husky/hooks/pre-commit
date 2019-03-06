@@ -14,7 +14,7 @@ cargo clippy -- -D warnings
 echo 'Precommit: cargo fmt'
 cargo fmt
 
-echo 'Precommit: !!!!!updating formatted files'
+echo 'Precommit: updating formatted files'
 # Stage updated files
 git add -u
 
