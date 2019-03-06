@@ -1,5 +1,7 @@
 use env_logger;
 use log::{error, info};
+#[macro_use]
+extern crate prettytable;
 
 mod cli;
 
@@ -11,7 +13,7 @@ fn main() {
     info!("Starting Authenticator...");
 
     if let Err(e) = run() {
-        error!("Auth lib error: {}", e);
+        error!("safe_auth error: {}", e);
         process::exit(1);
     }
 }

@@ -1,7 +1,6 @@
 use log::info;
-
+use prettytable::Table;
 use safe_auth::{acc_info, authed_apps, authorise_app, create_acc, log_in};
-
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -30,6 +29,8 @@ pub struct CmdArgs {
 pub fn run() -> Result<(), String> {
     let args = CmdArgs::from_args();
 
+    let mut table = Table::new();
+
     if let Option::Some(invite) = &args.invite {
         create_acc(&invite, &args.secret, &args.password)?;
     }
@@ -37,7 +38,8 @@ pub fn run() -> Result<(), String> {
     let authenticator = log_in(&args.secret, &args.password)?;
 
     if let Option::Some(req) = &args.req {
-        authorise_app(&authenticator, &req)?;
+        let auth_response = authorise_app(&authenticator, &req)?;
+        println!("{}", auth_response);
     }
 
     if args.balance {
@@ -46,11 +48,30 @@ pub fn run() -> Result<(), String> {
             "Account's current balance (PUTs done/available): {}/{}",
             mutations_done, mutations_available
         );
+        println!("{}/{}", mutations_done, mutations_available);
     };
 
     if args.apps {
-        let authed_apps = authed_apps(&authenticator)?;
-        info!("Authorised applications: {:?}", authed_apps);
+        let all_apps = authed_apps(&authenticator)?;
+        info!("Authorised applications: {:?}", all_apps);
+
+        if !all_apps.is_empty() {
+            table.add_row(row!["Authorised Applications"]);
+            table.add_row(row!["Id", "Name", "Vendor"]);
+
+            let all_app_iterator = all_apps.iter();
+
+            for app_info in all_app_iterator {
+                table.add_row(row![
+                    &app_info.app.id,
+                    &app_info.app.name,
+                    // &app_info.app.scope || "",
+                    &app_info.app.vendor,
+                ]);
+            }
+
+            table.printstd();
+        }
     };
 
     Ok(())

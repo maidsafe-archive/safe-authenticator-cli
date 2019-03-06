@@ -18,8 +18,8 @@ use maidsafe_utilities::serialisation::deserialise;
 
 #[derive(Debug)]
 pub struct AuthedAppsList {
-    app: AppExchangeInfo,
-    perms: Vec<(String, ContainerPermissions)>,
+    pub app: AppExchangeInfo,
+    pub perms: Vec<(String, ContainerPermissions)>,
 }
 
 /// # Create Account

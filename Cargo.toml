@@ -17,6 +17,7 @@ safe_core = { git = "https://github.com/bochaco/safe_client_libs", branch = "saf
 maidsafe_utilities = { git = "https://github.com/hunterlester/maidsafe_utilities", branch = "0.17.0-upgrades" }
 futures = "0.1.25"
 rand = "0.6.5"
+prettytable-rs = "^0.8"
 
 [features]
 testing = ["safe_authenticator/testing"]
