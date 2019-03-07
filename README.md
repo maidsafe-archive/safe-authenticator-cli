@@ -62,6 +62,16 @@ $ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> -
 Authorised permissions were revoked for app <app ID>
 ```
 
+## Execute Authenticator service, exposing RESTful API
+```
+$ cargo run -- --daemon 41805
+
+In separate terminal:
+$ curl -X POST http://localhost:41805/create/<secret>/<password>/<invite-token>
+$ curl -X POST http://localhost:41805/login/<secret>/<password>
+$ curl -X POST http://localhost:41805/authorise/<auth-request>
+```
+
 ## License
 This SAFE Network application is dual-licensed under the Modified BSD ([LICENSE-BSD](LICENSE-BSD) https://opensource.org/licenses/BSD-3-Clause) or the MIT license ([LICENSE-MIT](LICENSE-MIT) https://opensource.org/licenses/MIT) at your option.
 

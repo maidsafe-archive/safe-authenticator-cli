@@ -1,3 +1,5 @@
+pub mod authd;
+
 use log::{debug, info};
 use safe_authenticator::app_auth::authenticate;
 use safe_authenticator::config;
@@ -6,13 +8,13 @@ use safe_authenticator::Authenticator;
 
 use futures::future::Future;
 use safe_authenticator::errors::AuthError;
-use safe_authenticator::ipc::{decode_ipc_msg, /*decode_share_mdata_req,*/ encode_response};
+use safe_authenticator::ipc::decode_ipc_msg;
 use safe_authenticator::revocation::revoke_app as safe_authenticator_revoke_app;
 use safe_core::client as safe_core_client;
 use safe_core::client::Client;
 use safe_core::ipc::req::{AppExchangeInfo, ContainerPermissions, IpcReq};
 use safe_core::ipc::resp::{AccessContainerEntry, IpcResp};
-use safe_core::ipc::{access_container_enc_key, decode_msg, IpcMsg /*, IpcError*/};
+use safe_core::ipc::{access_container_enc_key, decode_msg, encode_msg, IpcMsg, /*, IpcError*/};
 use safe_core::utils::symmetric_decrypt;
 
 use maidsafe_utilities::serialisation::deserialise;
@@ -67,7 +69,9 @@ pub struct AuthedAppsList {
 ///```
 pub fn create_acc(invite: &str, secret: &str, password: &str) -> Result<Authenticator, String> {
     debug!("Attempting to create a SAFE account...");
-    match Authenticator::create_acc(secret, password, invite, || ()) {
+    match Authenticator::create_acc(secret, password, invite, || {
+        eprintln!("{}", "Disconnected from network")
+    }) {
         Ok(auth) => {
             debug!("Returning account just created");
             Ok(auth)
@@ -113,7 +117,9 @@ pub fn create_acc(invite: &str, secret: &str, password: &str) -> Result<Authenti
 ///```
 pub fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
     debug!("Attempting to log in...");
-    match Authenticator::login(secret, password, || ()) {
+    match Authenticator::login(secret, password, || {
+        eprintln!("{}", "Disconnected from network")
+    }) {
         Ok(auth) => {
             debug!("Returning logged-in Authenticator instance");
             Ok(auth)
@@ -191,14 +197,14 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
                 try_run(authenticator, move |client| authenticate(client, auth_req)).unwrap();
 
             debug!("Encoding response... {:?}", auth_granted);
-            let resp = encode_response(&IpcMsg::Resp {
+            let resp = encode_msg(&IpcMsg::Resp {
                 req_id,
                 resp: IpcResp::Auth(Ok(auth_granted)),
             })
             .unwrap();
             debug!("Returning auth response generated: {:?}", resp);
 
-            Ok(String::from_utf8(resp.into_bytes()).unwrap())
+            Ok(resp)
         }
         Ok(IpcMsg::Req {
             req: IpcReq::Containers(_cont_req),
@@ -217,7 +223,7 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
             let bootstrap_cfg = safe_core_client::bootstrap_config().unwrap();
 
             debug!("Encoding response... {:?}", bootstrap_cfg);
-            let resp = encode_response(&IpcMsg::Resp {
+            let resp = encode_msg(&IpcMsg::Resp {
                 req_id,
                 resp: IpcResp::Unregistered(Ok(bootstrap_cfg)),
             })
@@ -225,7 +231,7 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
 
             debug!("Returning auth response generated: {:?}", resp);
 
-            Ok(String::from_utf8(resp.into_bytes()).unwrap())
+            Ok(resp)
         }
         Ok(IpcMsg::Req {
             req: IpcReq::ShareMData(_share_mdata_req),
@@ -236,7 +242,6 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
             let metadata_cont = try_run(&authenticator, move |client| {
                 decode_share_mdata_req(client, &share_mdata_req)
             }).unwrap();
-
             debug!("MDs requested for sharing...");
             for metadata in metadata_cont {
                 if let Some(_metadata) = metadata {
