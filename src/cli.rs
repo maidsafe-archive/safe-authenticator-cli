@@ -1,5 +1,7 @@
 use prettytable::Table;
+use safe_auth::authd;
 use safe_auth::{acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app};
+use safe_authenticator::Authenticator;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -13,10 +15,10 @@ pub struct CmdArgs {
     invite: Option<String>,
     /// The secret phrase of the SAFE account
     #[structopt(short = "s", long = "secret")]
-    secret: String,
+    secret: Option<String>,
     /// The SAFE account's password
     #[structopt(short = "p", long = "password")]
-    password: String,
+    password: Option<String>,
     /// Get account's balance
     #[structopt(short = "b", long = "balance")]
     balance: bool,
@@ -29,38 +31,47 @@ pub struct CmdArgs {
     /// Pretty print
     #[structopt(short = "y", long = "pretty")]
     pretty: bool,
+    /// Instantiate Authenticator service
+    #[structopt(short = "d", long = "daemon")]
+    daemon: Option<u16>,
 }
 
 pub fn run() -> Result<(), String> {
     let args = CmdArgs::from_args();
 
-    let authenticator;
-    // If an invite token was provided then create an account
-    if let Option::Some(invite) = &args.invite {
-        authenticator = create_acc(&invite, &args.secret, &args.password)?;
+    if let Some(host_port) = args.daemon {
+        authd::run(host_port);
+        return Ok(());
+    }
+
+    let mut authenticator: Option<Authenticator> = None;
+
+    if let (Some(secret), Some(password), Some(invite)) =
+        (&args.secret, &args.password, &args.invite)
+    {
+        authenticator = Some(create_acc(&invite, &secret, &password)?);
         if args.pretty {
             println!("Account was created successfully!");
         }
-    } else {
-        // Log in before doing anything else
-        authenticator = log_in(&args.secret, &args.password)?;
+    } else if let (Some(secret), Some(password)) = (&args.secret, &args.password) {
+        authenticator = Some(log_in(&secret, &password)?);
         if args.pretty {
             println!("Logged in the SAFE Network successfully!");
         }
+    } else {
+        eprintln!("Please pass secret and password credentials.");
     }
 
-    // Authorise an app if req string was provided
-    if let Option::Some(req) = &args.req {
-        let auth_response = authorise_app(&authenticator, &req)?;
+    if let (Some(ref auth), Some(req)) = (&authenticator, &args.req) {
+        let auth_response = authorise_app(auth, &req)?;
         if args.pretty {
             print!("Authorisation response string: ");
         }
         println!("{}", auth_response);
     }
 
-    // Display account balance if requested
-    if args.balance {
-        let (mutations_done, mutations_available) = acc_info(&authenticator)?;
+    if let (Some(ref auth), true) = (&authenticator, args.balance) {
+        let (mutations_done, mutations_available) = acc_info(auth)?;
         if args.pretty {
             print!("Account's current balance (PUTs done/avaialble): ");
         }
@@ -68,16 +79,16 @@ pub fn run() -> Result<(), String> {
     };
 
     // Handle revoke arg if provided
-    if let Option::Some(app_id) = args.revoke {
-        revoke_app(&authenticator, app_id.clone())?;
+    if let (Some(ref auth), Some(app_id)) = (&authenticator, &args.revoke) {
+        revoke_app(auth, app_id.clone())?;
         if args.pretty {
             println!("Authorised permissions were revoked for app '{}'", app_id);
         }
     }
 
     // List authorised apps if requested
-    if args.apps {
-        let all_apps = authed_apps(&authenticator)?;
+    if let (Some(ref auth), true) = (&authenticator, args.apps) {
+        let all_apps = authed_apps(&auth)?;
         if args.pretty {
             let mut table = Table::new();
             table.add_row(row!["Authorised Applications"]);

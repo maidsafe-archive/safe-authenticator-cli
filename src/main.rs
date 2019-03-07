@@ -1,5 +1,5 @@
 use env_logger;
-use log::{error, info};
+use log::{debug, error};
 #[macro_use]
 extern crate prettytable;
 
@@ -10,7 +10,7 @@ use std::process;
 
 fn main() {
     env_logger::init();
-    info!("Starting Authenticator...");
+    debug!("Starting Authenticator...");
 
     if let Err(e) = run() {
         error!("safe_auth error: {}", e);
