@@ -7,6 +7,7 @@ use safe_authenticator::Authenticator;
 use futures::future::Future;
 use safe_authenticator::errors::AuthError;
 use safe_authenticator::ipc::{decode_ipc_msg, /*decode_share_mdata_req,*/ encode_response};
+use safe_authenticator::revocation::revoke_app as safe_authenticator_revoke_app;
 use safe_core::client as safe_core_client;
 use safe_core::client::Client;
 use safe_core::ipc::req::{AppExchangeInfo, ContainerPermissions, IpcReq};
@@ -367,4 +368,67 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
     });
 
     Ok(authed_apps)
+}
+
+/// # Revoke all permissions from an application
+///
+/// Using an account already created, you can log in to
+/// the SAFE Network and revoke all permissions previously granted to an
+/// application by providing its ID.
+///
+/// ## Example
+/// ```
+/// # use safe_auth::{create_acc, authorise_app};
+/// use safe_auth::{log_in, revoke_app};
+/// # fn random_str() -> String { (0..4).map(|_| rand::random::<char>()).collect() }
+/// /// Using an already existing account which has been used
+/// /// to authorise some application already:
+/// let my_secret = "mysecretstring";
+/// let my_password = "mypassword";
+/// # let my_secret = &(random_str());
+/// # let my_password = &(random_str());
+/// # create_acc("anInvite", my_secret, my_password).unwrap();
+/// let authenticator = log_in(my_secret, my_password).unwrap();
+/// # let auth_req = "bAAAAAAFBMHKYWAAAAAABWAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C453FMJQXA4BONFSAACYAAAAAAAAAABLWKYSBOBYCAVDFON2A2AAAAAAAAAAAJVQWSZCTMFTGKICMORSC4AACAAAAAAAAAAAAUAAAAAAAAAAAL5SG6Y3VNVSW45DTAEAAAAAAAAAAAAIAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
+/// # authorise_app(&authenticator, auth_req).unwrap();
+/// /// Revoke all permissions from app with ID `net.maidsafe.test.webapp.id`
+/// let revoked = revoke_app(&authenticator, "net.maidsafe.test.webapp.id");
+/// match revoked {
+///    Ok(_) => assert!(true), // This should pass
+///    Err(_) => assert!(false)
+/// }
+/// ```
+///
+/// ## Error Example
+/// // TODO: utils_run panics in this secenario. Remove the use of this utils.
+/// ```ignore
+/// # use safe_auth::{create_acc, authorise_app};
+/// use safe_auth::{log_in, revoke_app};
+/// # fn random_str() -> String { (0..4).map(|_| rand::random::<char>()).collect() }
+/// /// Using an already existing account which has been used
+/// /// to authorise some application already:
+/// let my_secret = "mysecretstring";
+/// let my_password = "mypassword";
+/// # let my_secret = &(random_str());
+/// # let my_password = &(random_str());
+/// # create_acc("anInvite", my_secret, my_password).unwrap();
+/// let authenticator = log_in(my_secret, my_password).unwrap();
+/// /// Try to revoke permissions with an incorrect app ID
+/// let revoked = revoke_app(&authenticator, "invalid-app-id");
+/// match revoked {
+///    Ok(_) => assert!(false), // This should not pass
+///    Err(message) => assert!(message.contains("UnknownApp"))
+/// }
+///```
+pub fn revoke_app(authenticator: &Authenticator, app_id: &'static str) -> Result<(), String> {
+    utils_run(authenticator, move |client| {
+        safe_authenticator_revoke_app(client, &app_id)
+            .and_then(move |_| {
+                debug!("Application sucessfully revoked: {}", app_id);
+                Ok(())
+            })
+            .map_err(AuthError::from)
+    });
+
+    Ok(())
 }
