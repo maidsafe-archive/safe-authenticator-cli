@@ -21,7 +21,7 @@ $ cargo test --doc
 
 ## Create a SAFE Network account
 ```
-$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> create --invite-token <token>
+$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> --invite-token <token>
 Account successfully created!
 ```
 
@@ -33,7 +33,7 @@ Logged-in successfully!
 
 ## Authorising an application
 ```
-$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> auth --req <auth req URI/string>
+$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> --req <auth req URI/string>
 Auth response: <auth response>
 ```
 
