@@ -56,6 +56,12 @@ Account's current balance (PUTs done/available): <done>/<available>
 Authorised applications: <list of authorised apps and containers permissions granted>
 ```
 
+## Revoking permissions from an application
+```
+$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> --revoke <app ID>
+Authorised permissions were revoked for app <app ID>
+```
+
 ## License
 This SAFE Network application is dual-licensed under the Modified BSD ([LICENSE-BSD](LICENSE-BSD) https://opensource.org/licenses/BSD-3-Clause) or the MIT license ([LICENSE-MIT](LICENSE-MIT) https://opensource.org/licenses/MIT) at your option.
 
