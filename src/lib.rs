@@ -392,7 +392,7 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
 /// # let auth_req = "bAAAAAAFBMHKYWAAAAAABWAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C453FMJQXA4BONFSAACYAAAAAAAAAABLWKYSBOBYCAVDFON2A2AAAAAAAAAAAJVQWSZCTMFTGKICMORSC4AACAAAAAAAAAAAAUAAAAAAAAAAAL5SG6Y3VNVSW45DTAEAAAAAAAAAAAAIAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
 /// # authorise_app(&authenticator, auth_req).unwrap();
 /// /// Revoke all permissions from app with ID `net.maidsafe.test.webapp.id`
-/// let revoked = revoke_app(&authenticator, "net.maidsafe.test.webapp.id");
+/// let revoked = revoke_app(&authenticator, String::from("net.maidsafe.test.webapp.id"));
 /// match revoked {
 ///    Ok(_) => assert!(true), // This should pass
 ///    Err(_) => assert!(false)
@@ -414,13 +414,13 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
 /// # create_acc("anInvite", my_secret, my_password).unwrap();
 /// let authenticator = log_in(my_secret, my_password).unwrap();
 /// /// Try to revoke permissions with an incorrect app ID
-/// let revoked = revoke_app(&authenticator, "invalid-app-id");
+/// let revoked = revoke_app(&authenticator, String::from("invalid-app-id"));
 /// match revoked {
 ///    Ok(_) => assert!(false), // This should not pass
 ///    Err(message) => assert!(message.contains("UnknownApp"))
 /// }
 ///```
-pub fn revoke_app(authenticator: &Authenticator, app_id: &'static str) -> Result<(), String> {
+pub fn revoke_app(authenticator: &Authenticator, app_id: String) -> Result<(), String> {
     utils_run(authenticator, move |client| {
         safe_authenticator_revoke_app(client, &app_id)
             .and_then(move |_| {

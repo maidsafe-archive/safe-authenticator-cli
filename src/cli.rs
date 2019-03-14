@@ -34,18 +34,19 @@ pub struct CmdArgs {
 pub fn run() -> Result<(), String> {
     let args = CmdArgs::from_args();
 
+    let authenticator;
     // If an invite token was provided then create an account
     if let Option::Some(invite) = &args.invite {
-        create_acc(&invite, &args.secret, &args.password)?;
+        authenticator = create_acc(&invite, &args.secret, &args.password)?;
         if args.pretty {
             println!("Account was created successfully!");
         }
-    }
-
-    // Log in before doing anything else
-    let authenticator = log_in(&args.secret, &args.password)?;
-    if args.pretty {
-        println!("Logged in the SAFE Network successfully!");
+    } else {
+        // Log in before doing anything else
+        authenticator = log_in(&args.secret, &args.password)?;
+        if args.pretty {
+            println!("Logged in the SAFE Network successfully!");
+        }
     }
 
     // Authorise an app if req string was provided
@@ -67,9 +68,8 @@ pub fn run() -> Result<(), String> {
     };
 
     // Handle revoke arg if provided
-    if let Option::Some(revoke) = args.revoke {
-        let app_id: &'static str = Box::leak(revoke.into_boxed_str());
-        revoke_app(&authenticator, app_id)?;
+    if let Option::Some(app_id) = args.revoke {
+        revoke_app(&authenticator, app_id.clone())?;
         if args.pretty {
             println!("Authorised permissions were revoked for app '{}'", app_id);
         }
