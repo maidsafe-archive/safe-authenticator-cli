@@ -1,3 +1,4 @@
+use log::warn;
 use prettytable::Table;
 use safe_auth::authd;
 use safe_auth::{acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app};
@@ -13,12 +14,6 @@ pub struct CmdArgs {
     /// The invitation token for creating a new SAFE Network account
     #[structopt(short = "i", long = "invite-token")]
     invite: Option<String>,
-    /// The secret phrase of the SAFE account
-    #[structopt(short = "s", long = "secret")]
-    secret: Option<String>,
-    /// The SAFE account's password
-    #[structopt(short = "p", long = "password")]
-    password: Option<String>,
     /// Get account's balance
     #[structopt(short = "b", long = "balance")]
     balance: bool,
@@ -38,23 +33,21 @@ pub struct CmdArgs {
 
 pub fn run() -> Result<(), String> {
     let args = CmdArgs::from_args();
-
     let mut authenticator: Option<Authenticator> = None;
 
-    if let (Some(secret), Some(password), Some(invite)) =
-        (&args.secret, &args.password, &args.invite)
-    {
-        authenticator = Some(create_acc(&invite, &secret, &password)?);
+	let the_secret : String = rpassword::read_password_from_tty(Some("Secret: ")).unwrap();
+	let the_password : String = rpassword::read_password_from_tty(Some("Password: ")).unwrap();
+
+    if let Some(invite) = &args.invite {
+        authenticator = Some(create_acc(&invite, &the_secret, &the_password)?);
         if args.pretty {
             println!("Account was created successfully!");
         }
-    } else if let (Some(secret), Some(password)) = (&args.secret, &args.password) {
-        authenticator = Some(log_in(&secret, &password)?);
+    } else {
+        authenticator = Some(log_in(&the_secret, &the_password)?);
         if args.pretty {
             println!("Logged in the SAFE Network successfully!");
         }
-    } else {
-        eprintln!("Please pass secret and password credentials.");
     }
 
     if let (Some(ref auth), Some(req)) = (&authenticator, &args.req) {
