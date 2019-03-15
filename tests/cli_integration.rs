@@ -11,16 +11,13 @@ static AUTHED_REQ: &str = "bAAAAAAFBMHKYWAAAAAABWAAAAAAAAAAANZSXILTNMFUWI43BMZSS
 static AUTHED_RESPONSE_START: &str = "bAEAAAAFBMHKYW";
 
 #[test]
+#[ignore]
 fn calling_safe_create_acc() {
     let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
 
     cmd.args(&vec![
-        "--secret",
-        &rand_string,
-        "--password",
-        &rand_string,
         "--invite-token",
         "aaa",
     ])
@@ -28,29 +25,15 @@ fn calling_safe_create_acc() {
     .success();
 }
 
-#[test]
-fn calling_safe_auth_without_args() {
-    let mut cmd = Command::cargo_bin("safe_auth").unwrap();
-
-    cmd.assert()
-        .stderr(predicate::str::contains(
-            "Please pass secret and password credentials.",
-        ))
-        .success()
-        .code(0);
-}
 
 #[test]
+#[ignore]
 fn calling_safe_auth_with_unregistered_req() {
     let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
 
     cmd.args(&vec![
-        "--secret",
-        &rand_string,
-        "--password",
-        &rand_string,
         "--invite-token",
         "aaa",
     ])
@@ -61,10 +44,6 @@ fn calling_safe_auth_with_unregistered_req() {
 
     auth_cmd
         .args(&vec![
-            "--secret",
-            &rand_string,
-            "--password",
-            &rand_string,
             "-r",
             &UNAUTHED_REQ,
         ])
@@ -74,17 +53,13 @@ fn calling_safe_auth_with_unregistered_req() {
 }
 
 #[test]
-
+#[ignore]
 fn calling_safe_auth_with_registered_req() {
     let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
 
     cmd.args(&vec![
-        "--secret",
-        &rand_string,
-        "--password",
-        &rand_string,
         "--invite-token",
         "aaa",
     ])
@@ -95,10 +70,6 @@ fn calling_safe_auth_with_registered_req() {
 
     auth_cmd
         .args(&vec![
-            "--secret",
-            &rand_string,
-            "--password",
-            &rand_string,
             "-r",
             &AUTHED_REQ,
         ])
