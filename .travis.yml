@@ -19,6 +19,13 @@ cache:
   directories:
     - "${HOME}/.cache/master"
 
+before_script:
+  - curl -sSL https://github.com/maidsafe/QA/raw/master/travis/cargo_install.sh > cargo_install.sh
+  - bash cargo_install.sh cargo-prune;
+
+before_cache:
+  - cargo prune
+
 install :
   - cargo check
 
