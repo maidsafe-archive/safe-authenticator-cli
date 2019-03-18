@@ -16,7 +16,6 @@ fn init_server(port: u16) -> Child {
 }
 
 #[test]
-#[ignore]
 fn curl_create_account() {
     let mut rng = rand::thread_rng();
     let port: u16 = rng.gen();
@@ -42,7 +41,6 @@ fn curl_create_account() {
 }
 
 #[test]
-#[ignore]
 fn curl_login() {
     let mut rng = rand::thread_rng();
     let port: u16 = rng.gen();
@@ -79,7 +77,6 @@ fn curl_login() {
 }
 
 #[test]
-#[ignore]
 fn curl_authorise() {
     let mut rng = rand::thread_rng();
     let port: u16 = rng.gen();
