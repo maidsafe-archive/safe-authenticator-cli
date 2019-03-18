@@ -269,7 +269,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn get_index() {
         let mut srv = test::TestServer::with_factory(create_test_service);
         let request = srv.client(Method::GET, "/").finish().unwrap();
@@ -279,7 +278,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn post_create_account() {
         let mut rng = rand::thread_rng();
         let locator: u32 = rng.gen();
@@ -299,7 +297,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn post_login() {
         let mut rng = rand::thread_rng();
         let locator: u32 = rng.gen();
@@ -375,7 +372,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn get_web_socket() {
         let mut srv = test::TestServer::with_factory(create_test_service);
         let (reader, mut writer) = srv.ws_at("/ws").unwrap();
