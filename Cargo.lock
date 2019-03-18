@@ -2024,6 +2024,7 @@ dependencies = [
  "predicates 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "routing 0.37.0 (git+https://github.com/hunterlester/routing?branch=0.37.0-upgrades)",
  "safe_authenticator 0.9.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
  "safe_core 0.32.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
  "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2032,7 +2033,7 @@ dependencies = [
 [[package]]
 name = "safe_authenticator"
 version = "0.9.0"
-source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#f85fe00d10573c66a9fb1b6645b927456ff47e90"
+source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#e024acf674e6de410057b5c692bdaf71866d6674"
 dependencies = [
  "config_file_handler 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ffi_utils 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2073,7 +2074,7 @@ dependencies = [
 [[package]]
 name = "safe_core"
 version = "0.32.0"
-source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#f85fe00d10573c66a9fb1b6645b927456ff47e90"
+source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#e024acf674e6de410057b5c692bdaf71866d6674"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "config_file_handler 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",

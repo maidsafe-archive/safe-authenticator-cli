@@ -7,15 +7,17 @@ use safe_authenticator::test_utils::{run as utils_run, try_run};
 use safe_authenticator::Authenticator;
 
 use futures::future::Future;
+use routing::ClientError;
+use safe_authenticator::access_container;
 use safe_authenticator::errors::AuthError;
-use safe_authenticator::ipc::decode_ipc_msg;
+use safe_authenticator::ipc::{decode_ipc_msg, update_container_perms};
 use safe_authenticator::revocation::revoke_app as safe_authenticator_revoke_app;
-use safe_core::client as safe_core_client;
 use safe_core::client::Client;
 use safe_core::ipc::req::{AppExchangeInfo, ContainerPermissions, IpcReq};
 use safe_core::ipc::resp::{AccessContainerEntry, IpcResp};
-use safe_core::ipc::{access_container_enc_key, decode_msg, encode_msg, IpcMsg, /*, IpcError*/};
+use safe_core::ipc::{access_container_enc_key, decode_msg, encode_msg, IpcMsg};
 use safe_core::utils::symmetric_decrypt;
+use safe_core::{client as safe_core_client, CoreError};
 
 use maidsafe_utilities::serialisation::deserialise;
 
@@ -207,11 +209,73 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
             Ok(resp)
         }
         Ok(IpcMsg::Req {
-            req: IpcReq::Containers(_cont_req),
-            ..
+            req: IpcReq::Containers(cont_req),
+            req_id,
         }) => {
             info!("Request was recognised as a containers auth request");
-            Ok(String::from(""))
+            debug!("Decoded request (req_id={:?}): {:?}", req_id, cont_req);
+
+            let permissions = cont_req.containers.clone();
+            let app_id = cont_req.app.id.clone();
+
+            let resp = try_run(authenticator, move |client| {
+                let c2 = client.clone();
+                let c3 = client.clone();
+                let c4 = client.clone();
+
+                config::get_app(client, &app_id)
+                    .and_then(move |app| {
+                        let sign_pk = app.keys.sign_pk;
+                        update_container_perms(&c2, permissions, sign_pk)
+                            .map(move |perms| (app, perms))
+                    })
+                    .and_then(move |(app, mut perms)| {
+                        let app_keys = app.keys;
+                        access_container::fetch_entry(&c3, &app_id, app_keys.clone()).then(
+                            move |res| {
+                                let version = match res {
+                                    // Updating an existing entry
+                                    Ok((version, Some(mut existing_perms))) => {
+                                        for (key, val) in perms {
+                                            let _ = existing_perms.insert(key, val);
+                                        }
+                                        perms = existing_perms;
+                                        version + 1
+                                    }
+
+                                    // Adding a new access container entry
+                                    Ok((_, None))
+                                    | Err(AuthError::CoreError(CoreError::RoutingClientError(
+                                        ClientError::NoSuchEntry,
+                                    ))) => 0,
+
+                                    // Error has occurred while trying to get an
+                                    // existing entry
+                                    Err(e) => return Err(e),
+                                };
+                                Ok((version, app_id, app_keys, perms))
+                            },
+                        )
+                    })
+                    .and_then(move |(version, app_id, app_keys, perms)| {
+                        access_container::put_entry(&c4, &app_id, &app_keys, &perms, version)
+                    })
+                    .and_then(move |_| {
+                        // TODO: we probably don't need to encode a response,
+                        // but just exit successfully?
+                        debug!("Encoding response...");
+                        let resp = encode_msg(&IpcMsg::Resp {
+                            req_id,
+                            resp: IpcResp::Containers(Ok(())),
+                        })?;
+                        Ok(resp)
+                    })
+                    .map_err(AuthError::from)
+            })
+            .unwrap();
+
+            debug!("Returning containers auth response generated: {:?}", resp);
+            Ok(resp)
         }
         Ok(IpcMsg::Req {
             req: IpcReq::Unregistered(user_data),
@@ -229,7 +293,7 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
             })
             .unwrap();
 
-            debug!("Returning auth response generated: {:?}", resp);
+            debug!("Returning unregistered auth response generated: {:?}", resp);
 
             Ok(resp)
         }
