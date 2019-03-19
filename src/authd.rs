@@ -9,7 +9,7 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 // How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-pub struct AuthenticatorState {
+struct AuthenticatorState {
     pub handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>>,
     pub host_port: Arc<u16>,
 }
@@ -76,7 +76,7 @@ impl WebSocket {
     }
 }
 
-pub fn authd_create_acc(
+fn authd_create_acc(
     info: Path<(String, String, String)>,
     req: HttpRequest<AuthenticatorState>,
 ) -> HttpResponse {
@@ -93,10 +93,7 @@ pub fn authd_create_acc(
     }
 }
 
-pub fn authd_login(
-    info: Path<(String, String)>,
-    req: HttpRequest<AuthenticatorState>,
-) -> HttpResponse {
+fn authd_login(info: Path<(String, String)>, req: HttpRequest<AuthenticatorState>) -> HttpResponse {
     match log_in(&info.0.clone(), &info.1.clone()) {
         Ok(auth) => {
             *(req.state().handle.lock().unwrap()) = Some(Ok(auth));
@@ -110,7 +107,7 @@ pub fn authd_login(
     }
 }
 
-pub fn authd_authorise(
+fn authd_authorise(
     authenticator_req: Path<String>,
     http_req: HttpRequest<AuthenticatorState>,
 ) -> HttpResponse {
@@ -129,12 +126,16 @@ pub fn authd_authorise(
     }
 }
 
-pub fn authd_web_socket(req: HttpRequest<AuthenticatorState>) -> Result<HttpResponse, Error> {
+fn authd_web_socket(req: HttpRequest<AuthenticatorState>) -> Result<HttpResponse, Error> {
     ws::start(&req, WebSocket::new())
 }
 
-pub fn run(port_arg: u16) {
-    let handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>> = Arc::new(Mutex::new(None));
+pub fn run(port_arg: u16, authenticator: Option<Authenticator>) {
+    let handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>> = match authenticator {
+        Some(auth) => Arc::new(Mutex::new(Some(Ok(auth)))),
+        None => Arc::new(Mutex::new(None)),
+    };
+
     let port: Arc<u16> = Arc::new(port_arg);
     let address = format!("127.0.0.1:{}", *port);
     println!("{}", &address);
