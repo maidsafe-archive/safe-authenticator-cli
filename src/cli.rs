@@ -39,11 +39,6 @@ pub struct CmdArgs {
 pub fn run() -> Result<(), String> {
     let args = CmdArgs::from_args();
 
-    if let Some(host_port) = args.daemon {
-        authd::run(host_port);
-        return Ok(());
-    }
-
     let mut authenticator: Option<Authenticator> = None;
 
     if let (Some(secret), Some(password), Some(invite)) =
@@ -135,6 +130,10 @@ pub fn run() -> Result<(), String> {
             }
         }
     };
+
+    if let Some(host_port) = args.daemon {
+        authd::run(host_port, authenticator);
+    }
 
     Ok(())
 }
