@@ -6,8 +6,8 @@ use safe_authenticator::config;
 use safe_authenticator::test_utils::{run as utils_run, try_run};
 use safe_authenticator::Authenticator;
 
-use futures::future::Future;
-use routing::ClientError;
+use futures::{stream, Future, Stream};
+use routing::{ClientError, User};
 use safe_authenticator::access_container;
 use safe_authenticator::errors::AuthError;
 use safe_authenticator::ipc::{decode_ipc_msg, update_container_perms};
@@ -298,23 +298,56 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
             Ok(resp)
         }
         Ok(IpcMsg::Req {
-            req: IpcReq::ShareMData(_share_mdata_req),
-            ..
+            req: IpcReq::ShareMData(share_mdata_req),
+            req_id,
         }) => {
             info!("Request was recognised as a share MD auth request");
-            /*
-            let metadata_cont = try_run(&authenticator, move |client| {
-                decode_share_mdata_req(client, &share_mdata_req)
-            }).unwrap();
-            debug!("MDs requested for sharing...");
-            for metadata in metadata_cont {
-                if let Some(_metadata) = metadata {
-                    debug!("MD");
-                } else {
-                    error!("MD invalid");
-                }
-            }*/
-            Ok(String::from(""))
+            debug!(
+                "Decoded request (req_id={:?}): {:?}",
+                req_id, share_mdata_req
+            );
+
+            let resp = try_run(authenticator, move |client| {
+                let client_cloned0 = client.clone();
+                let client_cloned1 = client.clone();
+                config::get_app(client, &share_mdata_req.app.id).and_then(move |app_info| {
+                    let user = User::Key(app_info.keys.sign_pk);
+                    let num_mdata = share_mdata_req.mdata.len();
+                    stream::iter_ok(share_mdata_req.mdata.into_iter())
+                        .map(move |mdata| {
+                            client_cloned0
+                                .get_mdata_shell(mdata.name, mdata.type_tag)
+                                .map(|md| (md.version(), mdata))
+                        })
+                        .buffer_unordered(num_mdata)
+                        .map(move |(version, mdata)| {
+                            client_cloned1.set_mdata_user_permissions(
+                                mdata.name,
+                                mdata.type_tag,
+                                user,
+                                mdata.perms,
+                                version + 1,
+                            )
+                        })
+                        .buffer_unordered(num_mdata)
+                        .map_err(AuthError::CoreError)
+                        .for_each(|()| Ok(()))
+                        .and_then(move |()| {
+                            // TODO: we probably don't need to encode a response,
+                            // but just exit successfully?
+                            debug!("Encoding response...");
+                            let resp = encode_msg(&IpcMsg::Resp {
+                                req_id,
+                                resp: IpcResp::ShareMData(Ok(())),
+                            })?;
+                            Ok(resp)
+                        })
+                })
+            })
+            .unwrap();
+
+            debug!("Returning shared MD auth response generated: {:?}", resp);
+            Ok(resp)
         }
         Err((error_code, description, _err)) => Err(format!(
             "Failed decoding the auth request: {} - {:?}",
