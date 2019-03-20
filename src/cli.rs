@@ -31,7 +31,7 @@ pub struct CmdArgs {
     /// Pretty print
     #[structopt(short = "y", long = "pretty")]
     pretty: bool,
-    /// Instantiate Authenticator service
+    /// Port number where the Authenticator webservice shall be listening to
     #[structopt(short = "d", long = "daemon")]
     daemon: Option<u16>,
 }
