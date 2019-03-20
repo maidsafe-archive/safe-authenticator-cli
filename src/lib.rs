@@ -13,7 +13,9 @@ use safe_authenticator::errors::AuthError;
 use safe_authenticator::ipc::{decode_ipc_msg, update_container_perms};
 use safe_authenticator::revocation::revoke_app as safe_authenticator_revoke_app;
 use safe_core::client::Client;
-use safe_core::ipc::req::{AppExchangeInfo, ContainerPermissions, IpcReq};
+use safe_core::ipc::req::{
+    AppExchangeInfo, AuthReq, ContainerPermissions, ContainersReq, IpcReq, ShareMDataReq,
+};
 use safe_core::ipc::resp::{AccessContainerEntry, IpcResp};
 use safe_core::ipc::{access_container_enc_key, decode_msg, encode_msg, IpcMsg};
 use safe_core::utils::symmetric_decrypt;
@@ -195,18 +197,7 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
         }) => {
             info!("Request was recognised as a general app auth request");
             debug!("Decoded request (req_id={:?}): {:?}", req_id, auth_req);
-            let auth_granted =
-                try_run(authenticator, move |client| authenticate(client, auth_req)).unwrap();
-
-            debug!("Encoding response... {:?}", auth_granted);
-            let resp = encode_msg(&IpcMsg::Resp {
-                req_id,
-                resp: IpcResp::Auth(Ok(auth_granted)),
-            })
-            .unwrap();
-            debug!("Returning auth response generated: {:?}", resp);
-
-            Ok(resp)
+            gen_auth_response(authenticator, req_id, auth_req)
         }
         Ok(IpcMsg::Req {
             req: IpcReq::Containers(cont_req),
@@ -214,68 +205,7 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
         }) => {
             info!("Request was recognised as a containers auth request");
             debug!("Decoded request (req_id={:?}): {:?}", req_id, cont_req);
-
-            let permissions = cont_req.containers.clone();
-            let app_id = cont_req.app.id.clone();
-
-            let resp = try_run(authenticator, move |client| {
-                let c2 = client.clone();
-                let c3 = client.clone();
-                let c4 = client.clone();
-
-                config::get_app(client, &app_id)
-                    .and_then(move |app| {
-                        let sign_pk = app.keys.sign_pk;
-                        update_container_perms(&c2, permissions, sign_pk)
-                            .map(move |perms| (app, perms))
-                    })
-                    .and_then(move |(app, mut perms)| {
-                        let app_keys = app.keys;
-                        access_container::fetch_entry(&c3, &app_id, app_keys.clone()).then(
-                            move |res| {
-                                let version = match res {
-                                    // Updating an existing entry
-                                    Ok((version, Some(mut existing_perms))) => {
-                                        for (key, val) in perms {
-                                            let _ = existing_perms.insert(key, val);
-                                        }
-                                        perms = existing_perms;
-                                        version + 1
-                                    }
-
-                                    // Adding a new access container entry
-                                    Ok((_, None))
-                                    | Err(AuthError::CoreError(CoreError::RoutingClientError(
-                                        ClientError::NoSuchEntry,
-                                    ))) => 0,
-
-                                    // Error has occurred while trying to get an
-                                    // existing entry
-                                    Err(e) => return Err(e),
-                                };
-                                Ok((version, app_id, app_keys, perms))
-                            },
-                        )
-                    })
-                    .and_then(move |(version, app_id, app_keys, perms)| {
-                        access_container::put_entry(&c4, &app_id, &app_keys, &perms, version)
-                    })
-                    .and_then(move |_| {
-                        // TODO: we probably don't need to encode a response,
-                        // but just exit successfully?
-                        debug!("Encoding response...");
-                        let resp = encode_msg(&IpcMsg::Resp {
-                            req_id,
-                            resp: IpcResp::Containers(Ok(())),
-                        })?;
-                        Ok(resp)
-                    })
-                    .map_err(AuthError::from)
-            })
-            .unwrap();
-
-            debug!("Returning containers auth response generated: {:?}", resp);
-            Ok(resp)
+            gen_cont_auth_response(authenticator, req_id, cont_req)
         }
         Ok(IpcMsg::Req {
             req: IpcReq::Unregistered(user_data),
@@ -283,19 +213,7 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
         }) => {
             info!("Request was recognised as an unregistered auth request");
             debug!("Decoded request (req_id={:?}): {:?}", req_id, user_data);
-
-            let bootstrap_cfg = safe_core_client::bootstrap_config().unwrap();
-
-            debug!("Encoding response... {:?}", bootstrap_cfg);
-            let resp = encode_msg(&IpcMsg::Resp {
-                req_id,
-                resp: IpcResp::Unregistered(Ok(bootstrap_cfg)),
-            })
-            .unwrap();
-
-            debug!("Returning unregistered auth response generated: {:?}", resp);
-
-            Ok(resp)
+            gen_unreg_auth_response(req_id)
         }
         Ok(IpcMsg::Req {
             req: IpcReq::ShareMData(share_mdata_req),
@@ -306,48 +224,7 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
                 "Decoded request (req_id={:?}): {:?}",
                 req_id, share_mdata_req
             );
-
-            let resp = try_run(authenticator, move |client| {
-                let client_cloned0 = client.clone();
-                let client_cloned1 = client.clone();
-                config::get_app(client, &share_mdata_req.app.id).and_then(move |app_info| {
-                    let user = User::Key(app_info.keys.sign_pk);
-                    let num_mdata = share_mdata_req.mdata.len();
-                    stream::iter_ok(share_mdata_req.mdata.into_iter())
-                        .map(move |mdata| {
-                            client_cloned0
-                                .get_mdata_shell(mdata.name, mdata.type_tag)
-                                .map(|md| (md.version(), mdata))
-                        })
-                        .buffer_unordered(num_mdata)
-                        .map(move |(version, mdata)| {
-                            client_cloned1.set_mdata_user_permissions(
-                                mdata.name,
-                                mdata.type_tag,
-                                user,
-                                mdata.perms,
-                                version + 1,
-                            )
-                        })
-                        .buffer_unordered(num_mdata)
-                        .map_err(AuthError::CoreError)
-                        .for_each(|()| Ok(()))
-                        .and_then(move |()| {
-                            // TODO: we probably don't need to encode a response,
-                            // but just exit successfully?
-                            debug!("Encoding response...");
-                            let resp = encode_msg(&IpcMsg::Resp {
-                                req_id,
-                                resp: IpcResp::ShareMData(Ok(())),
-                            })?;
-                            Ok(resp)
-                        })
-                })
-            })
-            .unwrap();
-
-            debug!("Returning shared MD auth response generated: {:?}", resp);
-            Ok(resp)
+            gen_shared_md_auth_response(authenticator, req_id, share_mdata_req)
         }
         Err((error_code, description, _err)) => Err(format!(
             "Failed decoding the auth request: {} - {:?}",
@@ -533,4 +410,154 @@ pub fn revoke_app(authenticator: &Authenticator, app_id: String) -> Result<(), S
     });
 
     Ok(())
+}
+
+// Helper function to generate an app authorisation response
+fn gen_auth_response(
+    authenticator: &Authenticator,
+    req_id: u32,
+    auth_req: AuthReq,
+) -> Result<String, String> {
+    let auth_granted =
+        try_run(authenticator, move |client| authenticate(client, auth_req)).unwrap();
+
+    debug!("Encoding response... {:?}", auth_granted);
+    let resp = encode_msg(&IpcMsg::Resp {
+        req_id,
+        resp: IpcResp::Auth(Ok(auth_granted)),
+    })
+    .unwrap();
+    debug!("Returning auth response generated: {:?}", resp);
+
+    Ok(resp)
+}
+
+// Helper function to generate a containers authorisation response
+fn gen_cont_auth_response(
+    authenticator: &Authenticator,
+    req_id: u32,
+    cont_req: ContainersReq,
+) -> Result<String, String> {
+    let permissions = cont_req.containers.clone();
+    let app_id = cont_req.app.id.clone();
+
+    let resp = try_run(authenticator, move |client| {
+        let c2 = client.clone();
+        let c3 = client.clone();
+        let c4 = client.clone();
+
+        config::get_app(client, &app_id)
+            .and_then(move |app| {
+                let sign_pk = app.keys.sign_pk;
+                update_container_perms(&c2, permissions, sign_pk).map(move |perms| (app, perms))
+            })
+            .and_then(move |(app, mut perms)| {
+                let app_keys = app.keys;
+                access_container::fetch_entry(&c3, &app_id, app_keys.clone()).then(move |res| {
+                    let version = match res {
+                        // Updating an existing entry
+                        Ok((version, Some(mut existing_perms))) => {
+                            for (key, val) in perms {
+                                let _ = existing_perms.insert(key, val);
+                            }
+                            perms = existing_perms;
+                            version + 1
+                        }
+
+                        // Adding a new access container entry
+                        Ok((_, None))
+                        | Err(AuthError::CoreError(CoreError::RoutingClientError(
+                            ClientError::NoSuchEntry,
+                        ))) => 0,
+
+                        // Error has occurred while trying to get an
+                        // existing entry
+                        Err(e) => return Err(e),
+                    };
+                    Ok((version, app_id, app_keys, perms))
+                })
+            })
+            .and_then(move |(version, app_id, app_keys, perms)| {
+                access_container::put_entry(&c4, &app_id, &app_keys, &perms, version)
+            })
+            .and_then(move |_| {
+                // TODO: we probably don't need to encode a response,
+                // but just exit successfully?
+                debug!("Encoding response...");
+                let resp = encode_msg(&IpcMsg::Resp {
+                    req_id,
+                    resp: IpcResp::Containers(Ok(())),
+                })?;
+                Ok(resp)
+            })
+            .map_err(AuthError::from)
+    })
+    .unwrap();
+
+    debug!("Returning containers auth response generated: {:?}", resp);
+    Ok(resp)
+}
+
+// Helper function to generate an unregistered authorisation response
+fn gen_unreg_auth_response(req_id: u32) -> Result<String, String> {
+    let bootstrap_cfg = safe_core_client::bootstrap_config().unwrap();
+
+    debug!("Encoding response... {:?}", bootstrap_cfg);
+    let resp = encode_msg(&IpcMsg::Resp {
+        req_id,
+        resp: IpcResp::Unregistered(Ok(bootstrap_cfg)),
+    })
+    .unwrap();
+
+    debug!("Returning unregistered auth response generated: {:?}", resp);
+    Ok(resp)
+}
+
+// Helper function to generate an authorisation response for sharing MD
+fn gen_shared_md_auth_response(
+    authenticator: &Authenticator,
+    req_id: u32,
+    share_mdata_req: ShareMDataReq,
+) -> Result<String, String> {
+    let resp = try_run(authenticator, move |client| {
+        let client_cloned0 = client.clone();
+        let client_cloned1 = client.clone();
+        config::get_app(client, &share_mdata_req.app.id).and_then(move |app_info| {
+            let user = User::Key(app_info.keys.sign_pk);
+            let num_mdata = share_mdata_req.mdata.len();
+            stream::iter_ok(share_mdata_req.mdata.into_iter())
+                .map(move |mdata| {
+                    client_cloned0
+                        .get_mdata_shell(mdata.name, mdata.type_tag)
+                        .map(|md| (md.version(), mdata))
+                })
+                .buffer_unordered(num_mdata)
+                .map(move |(version, mdata)| {
+                    client_cloned1.set_mdata_user_permissions(
+                        mdata.name,
+                        mdata.type_tag,
+                        user,
+                        mdata.perms,
+                        version + 1,
+                    )
+                })
+                .buffer_unordered(num_mdata)
+                .map_err(AuthError::CoreError)
+                .for_each(|()| Ok(()))
+                .and_then(move |()| {
+                    // TODO: we probably don't need to encode a response,
+                    // but just exit successfully?
+                    debug!("Encoding response...");
+                    let resp = encode_msg(&IpcMsg::Resp {
+                        req_id,
+                        resp: IpcResp::ShareMData(Ok(())),
+                    })?;
+                    Ok(resp)
+                })
+        })
+    })
+    .unwrap();
+
+    debug!("Returning shared MD auth response generated: {:?}", resp);
+    Ok(resp)
 }
