@@ -9,6 +9,38 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 // How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
+pub fn run(port_arg: u16, authenticator: Option<Authenticator>) {
+    let handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>> = match authenticator {
+        Some(auth) => Arc::new(Mutex::new(Some(Ok(auth)))),
+        None => Arc::new(Mutex::new(None)),
+    };
+
+    let port: Arc<u16> = Arc::new(port_arg);
+    let address = format!("127.0.0.1:{}", *port);
+    println!("{}", &address);
+
+    server::new(move || {
+        App::with_state(AuthenticatorState {
+            handle: handle.clone(),
+            host_port: port.clone(),
+        })
+        .resource("/", |r| {
+            r.method(Method::GET).f(|_| HttpResponse::Ok());
+        })
+        .resource("/authorise/{auth_req}", |r| {
+            r.method(Method::POST).with(authd_authorise);
+        })
+        .resource("/ws", |r| {
+            r.method(Method::GET).with(authd_web_socket);
+        })
+        .default_resource(|r| r.f(|_| HttpResponse::NotFound().body("Service endpoint not found.")))
+        .finish()
+    })
+    .bind(&address)
+    .unwrap()
+    .run();
+}
+
 struct AuthenticatorState {
     pub handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>>,
     pub host_port: Arc<u16>,
@@ -76,6 +108,7 @@ impl WebSocket {
     }
 }
 
+#[allow(dead_code)]
 fn authd_create_acc(
     info: Path<(String, String, String)>,
     req: HttpRequest<AuthenticatorState>,
@@ -93,6 +126,7 @@ fn authd_create_acc(
     }
 }
 
+#[allow(dead_code)]
 fn authd_login(info: Path<(String, String)>, req: HttpRequest<AuthenticatorState>) -> HttpResponse {
     match log_in(&info.0.clone(), &info.1.clone()) {
         Ok(auth) => {
@@ -128,44 +162,6 @@ fn authd_authorise(
 
 fn authd_web_socket(req: HttpRequest<AuthenticatorState>) -> Result<HttpResponse, Error> {
     ws::start(&req, WebSocket::new())
-}
-
-pub fn run(port_arg: u16, authenticator: Option<Authenticator>) {
-    let handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>> = match authenticator {
-        Some(auth) => Arc::new(Mutex::new(Some(Ok(auth)))),
-        None => Arc::new(Mutex::new(None)),
-    };
-
-    let port: Arc<u16> = Arc::new(port_arg);
-    let address = format!("127.0.0.1:{}", *port);
-    println!("{}", &address);
-
-    server::new(move || {
-        App::with_state(AuthenticatorState {
-            handle: handle.clone(),
-            host_port: port.clone(),
-        })
-        .resource("/", |r| {
-            r.method(Method::GET).f(|_| HttpResponse::Ok());
-        })
-        .resource("/login/{locator}/{password}", |r| {
-            r.method(Method::POST).with(authd_login);
-        })
-        .resource("/create/{locator}/{password}/{invite}", |r| {
-            r.method(Method::POST).with(authd_create_acc);
-        })
-        .resource("/authorise/{auth_req}", |r| {
-            r.method(Method::POST).with(authd_authorise);
-        })
-        .resource("/ws", |r| {
-            r.method(Method::GET).with(authd_web_socket);
-        })
-        .default_resource(|r| r.f(|_| HttpResponse::NotFound().body("Service endpoint not found.")))
-        .finish()
-    })
-    .bind(&address)
-    .unwrap()
-    .run();
 }
 
 #[cfg(test)]
