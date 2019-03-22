@@ -17,7 +17,7 @@ pub fn run(port_arg: u16, authenticator: Option<Authenticator>) {
 
     let port: Arc<u16> = Arc::new(port_arg);
     let address = format!("127.0.0.1:{}", *port);
-    println!("{}", &address);
+    println!("Exposing service on {}", &address);
 
     server::new(move || {
         App::with_state(AuthenticatorState {
