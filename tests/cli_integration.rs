@@ -17,13 +17,9 @@ fn calling_safe_create_acc() {
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
 
-<<<<<<< Updated upstream
     cmd.args(&vec!["--invite-token", &rand_string])
         .assert()
         .success();
-=======
-    cmd.args(&vec!["--invite-token", &rand_string]).assert().success();
->>>>>>> Stashed changes
 }
 
 #[test]
@@ -33,13 +29,9 @@ fn calling_safe_auth_with_unregistered_req() {
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
 
-<<<<<<< Updated upstream
     cmd.args(&vec!["--invite-token", &rand_string])
         .assert()
         .success();
-=======
-    cmd.args(&vec!["--invite-token", &rand_string]).assert().success();
->>>>>>> Stashed changes
 
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
 
@@ -57,13 +49,9 @@ fn calling_safe_auth_with_registered_req() {
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
 
-<<<<<<< Updated upstream
     cmd.args(&vec!["--invite-token", &rand_string])
         .assert()
         .success();
-=======
-    cmd.args(&vec!["--invite-token", &rand_string]).assert().success();
->>>>>>> Stashed changes
 
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
 

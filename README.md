@@ -21,55 +21,92 @@ $ cargo test --doc
 
 ## Create a SAFE Network account
 ```
-$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> --invite-token <token>
-Account successfully created!
+$ RUST_LOG=safe_auth=info cargo run -- --pretty --invite-token <token>
+Secret:
+Password:
+Account was created successfully!
 ```
 
 ## Log in the SAFE Network
 ```
-$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password>
-Logged-in successfully!
+$ RUST_LOG=safe_auth=info cargo run -- --pretty
+Secret:
+Password:
+Logged in the SAFE Network successfully!
 ```
 
 ## Authorising an application
 ```
-$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> --req <auth req URI/string>
-Auth response: <auth response>
+$ RUST_LOG=safe_auth=info cargo run -- --pretty --req <auth req string>
+Secret:
+Password:
+Authorisation response string: <auth response>
 ```
 
 ## Getting the account's current PUT balance
 ```
-$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> --balance
-Account's current balance (PUTs done/available): <done>/<available>
+$ RUST_LOG=safe_auth=info cargo run -- --pretty --balance
+Secret:
+Password:
+Logged in the SAFE Network successfully!
+Account's current balance (PUTs done/avaialble): <done>/<available>
 ```
 
 ## Getting the list of authorised applications
 ```
-$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> --apps
-Authorised applications: <list of authorised apps and containers permissions granted>
+$ RUST_LOG=safe_auth=info cargo run -- --pretty --apps
+Secret:
+Password:
+Logged in the SAFE Network successfully!
++---------------------------------+--------------+------------------+---------------------+
+| Authorised Applications         |              |                  |                     |
++---------------------------------+--------------+------------------+---------------------+
+| Id                              | Name         | Vendor           | Permissions         |
++---------------------------------+--------------+------------------+---------------------+
+| <app ID>                        | <app's name> | <vendor name>    | <app's permissions> |
++---------------------------------+--------------+------------------+---------------------+
+| ...                                                                                     |
++---------------------------------+--------------+------------------+---------------------+
 ```
 
 ## Getting the account's current PUT balance and list of authorised applications
 ```
-$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> --balance --apps
-Account's current balance (PUTs done/available): <done>/<available>
-Authorised applications: <list of authorised apps and containers permissions granted>
+$ RUST_LOG=safe_auth=info cargo run -- --pretty --balance --apps
+Secret:
+Password:
+Logged in the SAFE Network successfully!
+Account's current balance (PUTs done/avaialble): <done>/<available>
++---------------------------------+--------------+------------------+---------------------+
+| Authorised Applications         |              |                  |                     |
++---------------------------------+--------------+------------------+---------------------+
+| Id                              | Name         | Vendor           | Permissions         |
++---------------------------------+--------------+------------------+---------------------+
+| <app ID>                        | <app's name> | <vendor name>    | <app's permissions> |
++---------------------------------+--------------+------------------+---------------------+
+| ...                                                                                     |
++---------------------------------+--------------+------------------+---------------------+
 ```
 
 ## Revoking permissions from an application
 ```
-$ RUST_LOG=safe_auth=info cargo run -- --secret <secret> --password <password> --revoke <app ID>
-Authorised permissions were revoked for app <app ID>
+$ RUST_LOG=safe_auth=info cargo run -- --pretty --revoke <app ID>
+Secret:
+Password:
+Logged in the SAFE Network successfully!
+Authorised permissions were revoked for app '<app ID>'
 ```
 
 ## Execute Authenticator service, exposing RESTful API
 ```
 $ cargo run -- --daemon 41805
+Secret:
+Password:
+Exposing service on 127.0.0.1:41805
+```
 
-In separate terminal:
-$ curl -X POST http://localhost:41805/create/<secret>/<password>/<invite-token>
-$ curl -X POST http://localhost:41805/login/<secret>/<password>
-$ curl -X POST http://localhost:41805/authorise/<auth-request>
+Then on a separate terminal you can authorise an application with:
+```
+$ curl -X POST http://localhost:41805/authorise/<auth req string>
 ```
 
 ## License

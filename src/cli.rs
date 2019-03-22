@@ -9,9 +9,9 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 /// Manage SAFE Network authorisations and accounts.
 pub struct CmdArgs {
-    /// The authorisation request URI or string
+    /// The encoded authorisation request string
     #[structopt(short = "r", long = "req")]
-    req: Option<String>,
+    req_str: Option<String>,
     /// The invitation token for creating a new SAFE Network account
     #[structopt(short = "i", long = "invite-token")]
     invite: Option<String>,
@@ -33,12 +33,17 @@ pub struct CmdArgs {
 }
 
 pub fn run() -> Result<(), String> {
+    // Let's first get all the arguments passed in
     let args = CmdArgs::from_args();
 
+    // Prompt the user for the SAFE account credentials
     let the_secret: String = rpassword::read_password_from_tty(Some("Secret: ")).unwrap();
     let the_password: String = rpassword::read_password_from_tty(Some("Password: ")).unwrap();
 
     let authenticator: Authenticator;
+    // If an invite token is provided, create a SAFE account, otherwise
+    // just login. In both cases we use the instantiated authenticator
+    // for all subsequent operations, even for the daemon services.
     if let Some(invite) = &args.invite {
         authenticator = create_acc(&invite, &the_secret, &the_password)?;
         if args.pretty {
@@ -51,7 +56,8 @@ pub fn run() -> Result<(), String> {
         }
     }
 
-    if let Some(req) = &args.req {
+    // Authorise the application if a auth req string was provided
+    if let Some(req) = &args.req_str {
         let auth_response = authorise_app(&authenticator, &req)?;
         if args.pretty {
             print!("Authorisation response string: ");
@@ -59,6 +65,7 @@ pub fn run() -> Result<(), String> {
         println!("{}", auth_response);
     }
 
+    // Show the account's current balance if requested
     if args.balance {
         let (mutations_done, mutations_available) = acc_info(&authenticator)?;
         if args.pretty {
