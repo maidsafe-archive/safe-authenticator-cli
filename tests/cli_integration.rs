@@ -17,14 +17,14 @@ fn calling_safe_create_acc() {
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
 
-    cmd.args(&vec![
-        "--invite-token",
-        "aaa",
-    ])
-    .assert()
-    .success();
+<<<<<<< Updated upstream
+    cmd.args(&vec!["--invite-token", &rand_string])
+        .assert()
+        .success();
+=======
+    cmd.args(&vec!["--invite-token", &rand_string]).assert().success();
+>>>>>>> Stashed changes
 }
-
 
 #[test]
 #[ignore]
@@ -33,20 +33,18 @@ fn calling_safe_auth_with_unregistered_req() {
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
 
-    cmd.args(&vec![
-        "--invite-token",
-        "aaa",
-    ])
-    .assert()
-    .success();
+<<<<<<< Updated upstream
+    cmd.args(&vec!["--invite-token", &rand_string])
+        .assert()
+        .success();
+=======
+    cmd.args(&vec!["--invite-token", &rand_string]).assert().success();
+>>>>>>> Stashed changes
 
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
 
     auth_cmd
-        .args(&vec![
-            "-r",
-            &UNAUTHED_REQ,
-        ])
+        .args(&vec!["-r", &UNAUTHED_REQ])
         .assert()
         .stdout(UNAUTHED_RESPONSE)
         .success();
@@ -59,20 +57,18 @@ fn calling_safe_auth_with_registered_req() {
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
 
-    cmd.args(&vec![
-        "--invite-token",
-        "aaa",
-    ])
-    .assert()
-    .success();
+<<<<<<< Updated upstream
+    cmd.args(&vec!["--invite-token", &rand_string])
+        .assert()
+        .success();
+=======
+    cmd.args(&vec!["--invite-token", &rand_string]).assert().success();
+>>>>>>> Stashed changes
 
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
 
     auth_cmd
-        .args(&vec![
-            "-r",
-            &AUTHED_REQ,
-        ])
+        .args(&vec!["-r", &AUTHED_REQ])
         .assert()
         .stdout(predicate::str::starts_with(AUTHED_RESPONSE_START).from_utf8())
         .success();

@@ -1,7 +1,8 @@
-use log::warn;
 use prettytable::Table;
 use safe_auth::authd;
-use safe_auth::{acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app};
+use safe_auth::{
+    acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app, AuthedAppsList,
+};
 use safe_authenticator::Authenticator;
 use structopt::StructOpt;
 
@@ -22,44 +23,44 @@ pub struct CmdArgs {
     apps: bool,
     /// The application's ID to revoke all authorised permissions from
     #[structopt(short = "k", long = "revoke")]
-    revoke: Option<String>,
+    app_id: Option<String>,
     /// Pretty print
     #[structopt(short = "y", long = "pretty")]
     pretty: bool,
     /// Port number where the Authenticator webservice shall be listening to
     #[structopt(short = "d", long = "daemon")]
-    daemon: Option<u16>,
+    port: Option<u16>,
 }
 
 pub fn run() -> Result<(), String> {
     let args = CmdArgs::from_args();
-    let mut authenticator: Option<Authenticator> = None;
 
-	let the_secret : String = rpassword::read_password_from_tty(Some("Secret: ")).unwrap();
-	let the_password : String = rpassword::read_password_from_tty(Some("Password: ")).unwrap();
+    let the_secret: String = rpassword::read_password_from_tty(Some("Secret: ")).unwrap();
+    let the_password: String = rpassword::read_password_from_tty(Some("Password: ")).unwrap();
 
+    let authenticator: Authenticator;
     if let Some(invite) = &args.invite {
-        authenticator = Some(create_acc(&invite, &the_secret, &the_password)?);
+        authenticator = create_acc(&invite, &the_secret, &the_password)?;
         if args.pretty {
             println!("Account was created successfully!");
         }
     } else {
-        authenticator = Some(log_in(&the_secret, &the_password)?);
+        authenticator = log_in(&the_secret, &the_password)?;
         if args.pretty {
             println!("Logged in the SAFE Network successfully!");
         }
     }
 
-    if let (Some(ref auth), Some(req)) = (&authenticator, &args.req) {
-        let auth_response = authorise_app(auth, &req)?;
+    if let Some(req) = &args.req {
+        let auth_response = authorise_app(&authenticator, &req)?;
         if args.pretty {
             print!("Authorisation response string: ");
         }
         println!("{}", auth_response);
     }
 
-    if let (Some(ref auth), true) = (&authenticator, args.balance) {
-        let (mutations_done, mutations_available) = acc_info(auth)?;
+    if args.balance {
+        let (mutations_done, mutations_available) = acc_info(&authenticator)?;
         if args.pretty {
             print!("Account's current balance (PUTs done/avaialble): ");
         }
@@ -67,66 +68,76 @@ pub fn run() -> Result<(), String> {
     };
 
     // Handle revoke arg if provided
-    if let (Some(ref auth), Some(app_id)) = (&authenticator, &args.revoke) {
-        revoke_app(auth, app_id.clone())?;
+    if let Some(app_id) = &args.app_id {
+        revoke_app(&authenticator, app_id.clone())?;
         if args.pretty {
             println!("Authorised permissions were revoked for app '{}'", app_id);
         }
     }
 
     // List authorised apps if requested
-    if let (Some(ref auth), true) = (&authenticator, args.apps) {
-        let all_apps = authed_apps(&auth)?;
+    if args.apps {
+        let authed_apps = authed_apps(&authenticator)?;
         if args.pretty {
-            let mut table = Table::new();
-            table.add_row(row!["Authorised Applications"]);
-            table.add_row(row!["Id", "Name", "Vendor", "Permissions"]);
-
-            let all_app_iterator = all_apps.iter();
-            for app_info in all_app_iterator {
-                let mut row = String::from("");
-                for (cont, perms) in app_info.perms.iter() {
-                    row += &format!("{}: {:?}\n", cont, perms);
-                }
-                table.add_row(row![
-                    app_info.app.id,
-                    app_info.app.name,
-                    // app_info.app.scope || "",
-                    app_info.app.vendor,
-                    row,
-                ]);
-            }
-            table.printstd();
+            pretty_print_authed_apps(authed_apps);
         } else {
-            println!("APP ID\tNAME\tVENDOR\tPERMISSIONS");
-            let all_app_iterator = all_apps.iter();
-            for app_info in all_app_iterator {
-                let mut row = format!(
-                    "{}\t{:?}\t{:?}\t[",
-                    &app_info.app.id, &app_info.app.name, &app_info.app.vendor
-                );
-                let mut it = app_info.perms.iter();
-                while let Some((cont, perms)) = it.next() {
-                    row = row + &format!("{:?}:", cont);
-                    let mut it2 = perms.iter();
-                    while let Some(perm) = it2.next() {
-                        row = row + &format!("{:?}", perm);
-                        if it2.size_hint().0 > 0 {
-                            row += "|";
-                        };
-                    }
-                    if it.size_hint().0 > 0 {
-                        row += ",";
-                    };
-                }
-                println!("{}]", row)
-            }
+            parsable_list_authed_apps(authed_apps);
         }
     };
 
-    if let Some(host_port) = args.daemon {
-        authd::run(host_port, authenticator);
+    if let Some(host_port) = args.port {
+        authd::run(host_port, Some(authenticator));
     }
 
     Ok(())
+}
+
+// Private helper functions
+
+fn pretty_print_authed_apps(authed_apps: Vec<AuthedAppsList>) {
+    let mut table = Table::new();
+    table.add_row(row!["Authorised Applications"]);
+    table.add_row(row!["Id", "Name", "Vendor", "Permissions"]);
+
+    let all_app_iterator = authed_apps.iter();
+    for app_info in all_app_iterator {
+        let mut row = String::from("");
+        for (cont, perms) in app_info.perms.iter() {
+            row += &format!("{}: {:?}\n", cont, perms);
+        }
+        table.add_row(row![
+            app_info.app.id,
+            app_info.app.name,
+            // app_info.app.scope || "",
+            app_info.app.vendor,
+            row,
+        ]);
+    }
+    table.printstd();
+}
+
+fn parsable_list_authed_apps(authed_apps: Vec<AuthedAppsList>) {
+    println!("APP ID\tNAME\tVENDOR\tPERMISSIONS");
+    let all_app_iterator = authed_apps.iter();
+    for app_info in all_app_iterator {
+        let mut row = format!(
+            "{}\t{:?}\t{:?}\t[",
+            &app_info.app.id, &app_info.app.name, &app_info.app.vendor
+        );
+        let mut it = app_info.perms.iter();
+        while let Some((cont, perms)) = it.next() {
+            row = row + &format!("{:?}:", cont);
+            let mut it2 = perms.iter();
+            while let Some(perm) = it2.next() {
+                row = row + &format!("{:?}", perm);
+                if it2.size_hint().0 > 0 {
+                    row += "|";
+                };
+            }
+            if it.size_hint().0 > 0 {
+                row += ",";
+            };
+        }
+        println!("{}]", row)
+    }
 }
