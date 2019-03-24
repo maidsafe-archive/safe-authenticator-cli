@@ -27,7 +27,7 @@ before_cache:
   - cargo prune
 
 install :
-  - cargo check
+  - cargo check --release
 
 script :
-  - cargo test
+  - cargo test --release
