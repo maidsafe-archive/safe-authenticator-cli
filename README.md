@@ -104,7 +104,7 @@ $ cargo run -- --pretty --balance
 Secret:
 Password:
 Logged in the SAFE Network successfully!
-Account's current balance (PUTs done/avaialble): <done>/<available>
+Account's current balance (PUTs done/available): <done>/<available>
 ```
 
 ### Getting the list of authorised applications
@@ -130,7 +130,7 @@ $ cargo run -- --pretty --balance --apps
 Secret:
 Password:
 Logged in the SAFE Network successfully!
-Account's current balance (PUTs done/avaialble): <done>/<available>
+Account's current balance (PUTs done/available): <done>/<available>
 +---------------------------------+--------------+------------------+---------------------+
 | Authorised Applications         |              |                  |                     |
 +---------------------------------+--------------+------------------+---------------------+
