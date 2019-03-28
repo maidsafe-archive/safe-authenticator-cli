@@ -81,6 +81,25 @@ Password:
 Logged in the SAFE Network successfully!
 ```
 
+### Using a config file
+
+It's possible (though not secure) to use a simple json file to pass `secret` and `password` to the auth CLI, and so avoid having to manually input both.
+
+```
+// my.config.json
+{
+  "password": "v2SwvNl7MR52A5mdtoeXjDVqch3tWm",
+  "secret": "v2SwvNl7MR52A5mdtoeXjDVqch3tWm"
+}
+
+```
+And so you can log in, thus:
+```
+$ cargo run -- --pretty --config ./my.config.json
+Logged in the SAFE Network successfully!
+```
+
+
 ### Authorising an application
 ```
 $ cargo run -- --pretty --req <auth req string>
@@ -88,6 +107,7 @@ Secret:
 Password:
 Authorisation response string: <auth response>
 ```
+
 
 As an example, the following command passes a valid encoded authorisation request as the value of the `--req` argument:
 ```
