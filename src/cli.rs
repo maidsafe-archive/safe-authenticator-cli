@@ -69,7 +69,7 @@ pub fn run() -> Result<(), String> {
     if args.balance {
         let (mutations_done, mutations_available) = acc_info(&authenticator)?;
         if args.pretty {
-            print!("Account's current balance (PUTs done/avaialble): ");
+            print!("Account's current balance (PUTs done/available): ");
         }
         println!("{}/{}", mutations_done, mutations_available);
     };

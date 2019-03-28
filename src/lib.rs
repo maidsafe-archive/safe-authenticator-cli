@@ -333,11 +333,12 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
                         for (key, (_mdata_info, perms)) in app_access.into_iter() {
                             cont_perms.push((key, perms));
                         }
+
+                        apps.push(AuthedAppsList {
+                            app: app.info.clone(),
+                            perms: cont_perms,
+                        });
                     }
-                    apps.push(AuthedAppsList {
-                        app: app.info.clone(),
-                        perms: cont_perms,
-                    });
                 }
 
                 debug!("Returning list of authorised applications: {:?}", apps);
