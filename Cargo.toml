@@ -23,6 +23,8 @@ futures = "0.1.25"
 rand = "0.6.5"
 prettytable-rs = "^0.8"
 predicates = "1.0.0"
+serde = "1.0.89"
+serde_json = "1.0.39"
 
 [features]
 testing = ["safe_authenticator/testing"]

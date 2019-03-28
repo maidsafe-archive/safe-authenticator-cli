@@ -5,11 +5,24 @@ use safe_auth::{
 };
 use safe_authenticator::Authenticator;
 use structopt::StructOpt;
+extern crate serde;
+extern crate serde_json;
+
+use std::fs;
+
+
+#[derive(Debug)]
+struct LoginDetails {
+    secret: String,
+    password: String
+}
 
 #[derive(StructOpt, Debug)]
 /// Manage SAFE Network authorisations and accounts.
 pub struct CmdArgs {
     /// The encoded authorisation request string
+    #[structopt(short = "c", long = "config")]
+    config_file_str: Option<String>,
     #[structopt(short = "r", long = "req")]
     req_str: Option<String>,
     /// The invitation token for creating a new SAFE Network account
@@ -36,21 +49,19 @@ pub fn run() -> Result<(), String> {
     // Let's first get all the arguments passed in
     let args = CmdArgs::from_args();
 
-    // Prompt the user for the SAFE account credentials
-    let the_secret: String = rpassword::read_password_from_tty(Some("Secret: ")).unwrap();
-    let the_password: String = rpassword::read_password_from_tty(Some("Password: ")).unwrap();
+    let login_details = get_login_details(&args)?;
 
     let authenticator: Authenticator;
     // If an invite token is provided, create a SAFE account, otherwise
     // just login. In both cases we use the instantiated authenticator
     // for all subsequent operations, even for the daemon services.
     if let Some(invite) = &args.invite {
-        authenticator = create_acc(&invite, &the_secret, &the_password)?;
+        authenticator = create_acc(&invite, &login_details.secret, &login_details.password)?;
         if args.pretty {
             println!("Account was created successfully!");
         }
     } else {
-        authenticator = log_in(&the_secret, &the_password)?;
+        authenticator = log_in(&login_details.secret, &login_details.password)?;
         if args.pretty {
             println!("Logged in the SAFE Network successfully!");
         }
@@ -100,6 +111,46 @@ pub fn run() -> Result<(), String> {
 }
 
 // Private helper functions
+
+fn get_login_details(args: &CmdArgs) -> Result<LoginDetails, String> {
+    let mut the_secret: String;
+    let mut the_password: String;
+
+    if let Some(config_file_str) = &args.config_file_str {
+        let file = fs::File::open(&config_file_str).unwrap();
+
+        let json: serde_json::Value = serde_json::from_reader(file).unwrap();
+
+        if let Some(secret) = json.get("secret") {
+            the_secret = secret.to_string();
+        } else {
+            return Err("The config files's secret field cannot be empty".to_string());
+        }
+
+        if let Some(password) = json.get("password") {
+            the_password = password.to_string();
+        } else {
+            return Err("The config files's password field cannot be empty".to_string());
+        }
+    } else {
+        // Prompt the user for the SAFE account credentials
+        the_secret = rpassword::read_password_from_tty(Some("Secret: ")).unwrap();
+        the_password = rpassword::read_password_from_tty(Some("Password: ")).unwrap();
+    }
+
+    if the_secret.is_empty() || the_password.is_empty() {
+        return Err(String::from(
+            "Neither the secret nor password can be empty.",
+        ));
+    }
+
+	let details = LoginDetails{
+		secret: the_secret,
+		password: the_password
+	};
+
+	Ok(details)
+}
 
 fn pretty_print_authed_apps(authed_apps: Vec<AuthedAppsList>) {
     let mut table = Table::new();
