@@ -1934,8 +1934,8 @@ dependencies = [
 
 [[package]]
 name = "rpassword"
-version = "3.0.0"
-source = "git+https://github.com/joshuef/rpassword?branch=ConsistentNewLineOnEnter#86d387d90483b63d6aba453885ed644a9039b805"
+version = "3.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.50 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2035,7 +2035,7 @@ dependencies = [
  "prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "routing 0.37.0 (git+https://github.com/hunterlester/routing?branch=0.37.0-upgrades)",
- "rpassword 3.0.0 (git+https://github.com/joshuef/rpassword?branch=ConsistentNewLineOnEnter)",
+ "rpassword 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "safe_authenticator 0.9.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
  "safe_core 0.32.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
  "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3331,7 +3331,7 @@ dependencies = [
 "checksum resource_proof 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cb01631aa482069b21c6ebb40a1c943389b369377975986094b524801c3543e0"
 "checksum ring 0.13.5 (registry+https://github.com/rust-lang/crates.io-index)" = "2c4db68a2e35f3497146b7e4563df7d4773a2433230c5e4b448328e31740458a"
 "checksum routing 0.37.0 (git+https://github.com/hunterlester/routing?branch=0.37.0-upgrades)" = "<none>"
-"checksum rpassword 3.0.0 (git+https://github.com/joshuef/rpassword?branch=ConsistentNewLineOnEnter)" = "<none>"
+"checksum rpassword 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2e666b2d20d009567502170c786aa4d7089204c18b739a68a861c8f9b2206401"
 "checksum rust_sodium 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0c1d4c517ad3d421a390cad0afa1108a507be2b86ea1f11afb12809e57a2f0c9"
 "checksum rust_sodium-sys 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)" = "629fddcdd90346a1b8dd7af39f27c4e083e124591f79e843871715ab50ff7e2b"
 "checksum rustc-demangle 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "adacaae16d02b6ec37fdc7acfcddf365978de76d1983d3ee22afc260e1ca9619"
