@@ -81,7 +81,7 @@ Password:
 Logged in the SAFE Network successfully!
 ```
 
-### Using a config file
+#### Using a config file
 
 It's possible (though not secure) to use a simple json file to pass `secret` and `password` to the auth CLI, and so avoid having to manually input both.
 
@@ -99,6 +99,26 @@ $ cargo run -- --pretty --config ./my.config.json
 Logged in the SAFE Network successfully!
 ```
 
+
+#### Using Environmental Variables
+
+Another method for passing secret/password involves using the environmental variables `SAFE_AUTH_SECRET` and `SAFE_AUTH_PASSWORD`.
+
+With those set (eg, on linux/osx: `export SAFE_AUTH_SECRET="<you secret>;"`, and `export SAFE_AUTH_PASSWORD="<you password>"`), you can then login without needing to enter login details, or pass a config file:
+
+```
+$ cargo run -- --pretty
+Logged in the SAFE Network successfully!
+```
+
+Or, you can choose to pass the env vars to the command directly (though this can be insecure):
+
+```
+$ SAFE_AUTH_SECRET="<secret>" SAFE_AUTH_PASSWORD="<password>" cargo run -- --pretty
+Logged in the SAFE Network successfully!
+```
+
+Do note, that _both_ the secret and password env vars must be set to use this auth method. If only one is set, an error will be thrown.
 
 ### Authorising an application
 ```

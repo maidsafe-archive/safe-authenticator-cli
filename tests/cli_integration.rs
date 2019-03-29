@@ -43,6 +43,49 @@ fn calling_safe_create_acc() {
 }
 
 #[test]
+fn calling_safe_create_acc_with_env_vars() {
+    let mut cmd = Command::cargo_bin("safe_auth").unwrap();
+    let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+
+    cmd
+		.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
+		.env("SAFE_AUTH_SECRET", "something")
+		.env("SAFE_AUTH_PASSWORD", "else")
+        .args(&vec![
+            "--invite-token",
+            &rand_string
+        ])
+        .assert()
+        .success();
+}
+
+#[test]
+fn calling_safe_create_acc_with_only_one_env_var() {
+    let mut cmd = Command::cargo_bin("safe_auth").unwrap();
+    let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+
+    cmd
+		.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
+		.env("SAFE_AUTH_SECRET", "something")
+        .args(&vec![
+            "--invite-token",
+            &rand_string
+        ])
+        .assert()
+        .failure();
+
+    cmd
+		.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
+		.env("SAFE_AUTH_PASSWORD", "something")
+        .args(&vec![
+            "--invite-token",
+            &rand_string
+        ])
+        .assert()
+        .failure();
+}
+
+#[test]
 fn can_login_with_config_file() {
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
 
