@@ -10,8 +10,7 @@ actix = "0.7.9"
 actix-web = "0.7.18"
 assert_cmd = "0.11.0"
 log = "0.4.6"
-# rpassword = "2.1.0"
-rpassword = {  git = "https://github.com/joshuef/rpassword",  branch = "ConsistentNewLineOnEnter" }
+rpassword = "3.0.1"
 structopt = "0.2.14"
 env_logger = "0.6.0"
 #safe_authenticator = { git = "https://github.com/hunterlester/safe_client_libs", branch = "safe_authenticator-0.9.0-upgrades" }
