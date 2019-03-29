@@ -7,6 +7,8 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use prettytable::Table;
+use log::{info};
+
 use safe_auth::authd;
 use safe_auth::{
     acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app, AuthedAppsList,
@@ -18,6 +20,14 @@ extern crate serde_json;
 
 use std::fs;
 
+use serde::Deserialize;
+extern crate envy;
+
+#[derive(Deserialize, Debug)]
+struct Environment {
+    safe_auth_secret: Option<String>,
+    safe_auth_password: Option<String>
+}
 
 #[derive(Debug)]
 struct LoginDetails {
@@ -121,30 +131,50 @@ pub fn run() -> Result<(), String> {
 // Private helper functions
 
 fn get_login_details(args: &CmdArgs) -> Result<LoginDetails, String> {
-    let mut the_secret: String;
-    let mut the_password: String;
+    let mut the_secret: String = String::from("");
+    let mut the_password: String = String::from("");
 
-    if let Some(config_file_str) = &args.config_file_str {
-        let file = fs::File::open(&config_file_str).unwrap();
+	let environment_details = envy::from_env::<Environment>().unwrap();
 
-        let json: serde_json::Value = serde_json::from_reader(file).unwrap();
+	if let Some(safe_auth_secret) = environment_details.safe_auth_secret {
+		the_secret = safe_auth_secret;
+		info!("Using secret from provided ENV var: safe_auth_secret")
+	}
 
-        if let Some(secret) = json.get("secret") {
-            the_secret = secret.to_string();
-        } else {
-            return Err("The config files's secret field cannot be empty".to_string());
-        }
+	if let Some(safe_auth_password) = environment_details.safe_auth_password {
+		the_password = safe_auth_password;
+		info!("Using password from provided ENV var: safe_auth_password")
+	}
 
-        if let Some(password) = json.get("password") {
-            the_password = password.to_string();
-        } else {
-            return Err("The config files's password field cannot be empty".to_string());
-        }
-    } else {
-        // Prompt the user for the SAFE account credentials
-        the_secret = rpassword::read_password_from_tty(Some("Secret: ")).unwrap();
-        the_password = rpassword::read_password_from_tty(Some("Password: ")).unwrap();
-    }
+	if ( !the_secret.is_empty() && the_password.is_empty() ) ||
+ 		( the_secret.is_empty() && !the_password.is_empty() )
+		{
+			return Err("Both the secret and password environment variables must be set to be used for SAFE login.".to_string());
+		}
+
+	if the_secret.is_empty() || the_password.is_empty() {
+		if let Some(config_file_str) = &args.config_file_str {
+			let file = fs::File::open(&config_file_str).unwrap();
+
+			let json: serde_json::Value = serde_json::from_reader(file).unwrap();
+
+			if let Some(secret) = json.get("secret") {
+				the_secret = secret.to_string();
+			} else {
+				return Err("The config files's secret field cannot be empty".to_string());
+			}
+
+			if let Some(password) = json.get("password") {
+				the_password = password.to_string();
+			} else {
+				return Err("The config files's password field cannot be empty".to_string());
+			}
+		} else {
+			// Prompt the user for the SAFE account credentials
+			the_secret = rpassword::read_password_from_tty(Some("Secret: ")).unwrap();
+			the_password = rpassword::read_password_from_tty(Some("Password: ")).unwrap();
+		}
+	}
 
     if the_secret.is_empty() || the_password.is_empty() {
         return Err(String::from(
