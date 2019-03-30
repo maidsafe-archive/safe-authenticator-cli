@@ -2036,15 +2036,15 @@ dependencies = [
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "routing 0.37.0 (git+https://github.com/hunterlester/routing?branch=0.37.0-upgrades)",
  "rpassword 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "safe_authenticator 0.9.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
- "safe_core 0.32.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
+ "safe_authenticator 0.9.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
+ "safe_core 0.32.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
  "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "safe_authenticator"
-version = "0.9.0"
-source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#e024acf674e6de410057b5c692bdaf71866d6674"
+version = "0.9.1"
+source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#d863a0d8f3002e196da5828cea381956aff45360"
 dependencies = [
  "config_file_handler 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ffi_utils 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2057,7 +2057,7 @@ dependencies = [
  "routing 0.37.0 (git+https://github.com/hunterlester/routing?branch=0.37.0-upgrades)",
  "rust_sodium 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "safe_bindgen 0.11.0 (git+https://github.com/hunterlester/safe_bindgen?branch=0.11.0-upgrades)",
- "safe_core 0.32.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
+ "safe_core 0.32.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2084,8 +2084,8 @@ dependencies = [
 
 [[package]]
 name = "safe_core"
-version = "0.32.0"
-source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#e024acf674e6de410057b5c692bdaf71866d6674"
+version = "0.32.1"
+source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#d863a0d8f3002e196da5828cea381956aff45360"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "config_file_handler 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3339,9 +3339,9 @@ dependencies = [
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum rustfmt 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ec940eed814db0fb7ab928c5f5025f97dc55d1c0e345e39dda2ce9f945557500"
 "checksum ryu 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "eb9e9b8cde282a9fe6a42dd4681319bfb63f121b8a8ee9439c6f4107e58a46f7"
-"checksum safe_authenticator 0.9.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)" = "<none>"
+"checksum safe_authenticator 0.9.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)" = "<none>"
 "checksum safe_bindgen 0.11.0 (git+https://github.com/hunterlester/safe_bindgen?branch=0.11.0-upgrades)" = "<none>"
-"checksum safe_core 0.32.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)" = "<none>"
+"checksum safe_core 0.32.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)" = "<none>"
 "checksum safemem 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8dca453248a96cb0749e36ccdfe2b0b4e54a61bfef89fb97ec621eb8e0a93dd9"
 "checksum same-file 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8f20c4be53a8a1ff4c1f1b2bd14570d2f634628709752f0702ecdd2b3f9a5267"
 "checksum schannel 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)" = "f2f6abf258d99c3c1c5c2131d99d064e94b7b3dd5f416483057f308fea253339"
