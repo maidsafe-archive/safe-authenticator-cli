@@ -1934,7 +1934,7 @@ dependencies = [
 
 [[package]]
 name = "rpassword"
-version = "2.1.0"
+version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2035,9 +2035,9 @@ dependencies = [
  "prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "routing 0.37.0 (git+https://github.com/hunterlester/routing?branch=0.37.0-upgrades)",
- "rpassword 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "safe_authenticator 0.9.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
- "safe_core 0.32.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
+ "rpassword 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "safe_authenticator 0.9.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.1-upgrades)",
+ "safe_core 0.32.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.1-upgrades)",
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2045,8 +2045,8 @@ dependencies = [
 
 [[package]]
 name = "safe_authenticator"
-version = "0.9.0"
-source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#e024acf674e6de410057b5c692bdaf71866d6674"
+version = "0.9.1"
+source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.1-upgrades#cb91e147d09f3ae7c84dd9788d03aa85510b3389"
 dependencies = [
  "config_file_handler 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ffi_utils 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2059,7 +2059,7 @@ dependencies = [
  "routing 0.37.0 (git+https://github.com/hunterlester/routing?branch=0.37.0-upgrades)",
  "rust_sodium 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "safe_bindgen 0.11.0 (git+https://github.com/hunterlester/safe_bindgen?branch=0.11.0-upgrades)",
- "safe_core 0.32.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)",
+ "safe_core 0.32.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.1-upgrades)",
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2086,8 +2086,8 @@ dependencies = [
 
 [[package]]
 name = "safe_core"
-version = "0.32.0"
-source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades#e024acf674e6de410057b5c692bdaf71866d6674"
+version = "0.32.1"
+source = "git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.1-upgrades#cb91e147d09f3ae7c84dd9788d03aa85510b3389"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "config_file_handler 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3333,7 +3333,7 @@ dependencies = [
 "checksum resource_proof 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cb01631aa482069b21c6ebb40a1c943389b369377975986094b524801c3543e0"
 "checksum ring 0.13.5 (registry+https://github.com/rust-lang/crates.io-index)" = "2c4db68a2e35f3497146b7e4563df7d4773a2433230c5e4b448328e31740458a"
 "checksum routing 0.37.0 (git+https://github.com/hunterlester/routing?branch=0.37.0-upgrades)" = "<none>"
-"checksum rpassword 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d37473170aedbe66ffa3ad3726939ba677d83c646ad4fd99e5b4bc38712f45ec"
+"checksum rpassword 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2e666b2d20d009567502170c786aa4d7089204c18b739a68a861c8f9b2206401"
 "checksum rust_sodium 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0c1d4c517ad3d421a390cad0afa1108a507be2b86ea1f11afb12809e57a2f0c9"
 "checksum rust_sodium-sys 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)" = "629fddcdd90346a1b8dd7af39f27c4e083e124591f79e843871715ab50ff7e2b"
 "checksum rustc-demangle 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "adacaae16d02b6ec37fdc7acfcddf365978de76d1983d3ee22afc260e1ca9619"
@@ -3341,9 +3341,9 @@ dependencies = [
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum rustfmt 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ec940eed814db0fb7ab928c5f5025f97dc55d1c0e345e39dda2ce9f945557500"
 "checksum ryu 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "eb9e9b8cde282a9fe6a42dd4681319bfb63f121b8a8ee9439c6f4107e58a46f7"
-"checksum safe_authenticator 0.9.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)" = "<none>"
+"checksum safe_authenticator 0.9.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.1-upgrades)" = "<none>"
 "checksum safe_bindgen 0.11.0 (git+https://github.com/hunterlester/safe_bindgen?branch=0.11.0-upgrades)" = "<none>"
-"checksum safe_core 0.32.0 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.0-upgrades)" = "<none>"
+"checksum safe_core 0.32.1 (git+https://github.com/bochaco/safe_client_libs?branch=safe_authenticator-0.9.1-upgrades)" = "<none>"
 "checksum safemem 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8dca453248a96cb0749e36ccdfe2b0b4e54a61bfef89fb97ec621eb8e0a93dd9"
 "checksum same-file 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8f20c4be53a8a1ff4c1f1b2bd14570d2f634628709752f0702ecdd2b3f9a5267"
 "checksum schannel 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)" = "f2f6abf258d99c3c1c5c2131d99d064e94b7b3dd5f416483057f308fea253339"

@@ -1,5 +1,14 @@
+// Copyright 2019 MaidSafe.net limited.
+//
+// This SAFE Network Software is licensed to you under The General Public License (GPL), version 3.
+// Unless required by applicable law or agreed to in writing, the SAFE Network Software distributed
+// under the GPL Licence is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. Please review the Licences for the specific language governing
+// permissions and limitations relating to use of the SAFE Network Software.
+
 use super::{authorise_app, create_acc, log_in};
 use actix_web::{actix::*, http::Method, server, ws, App, Error, HttpRequest, HttpResponse, Path};
+use log::debug;
 use safe_authenticator::{AuthError, Authenticator};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -20,10 +29,18 @@ pub fn run(port_arg: u16, authenticator: Option<Authenticator>) {
     println!("Exposing service on {}", &address);
 
     server::new(move || {
-        App::with_state(AuthenticatorState {
+        create_web_service(AuthenticatorState {
             handle: handle.clone(),
-            host_port: port.clone(),
         })
+        .finish()
+    })
+    .bind(&address)
+    .unwrap()
+    .run();
+}
+
+fn create_web_service(state: AuthenticatorState) -> App<AuthenticatorState> {
+    App::with_state(state)
         .resource("/", |r| {
             r.method(Method::GET).f(|_| HttpResponse::Ok());
         })
@@ -34,16 +51,10 @@ pub fn run(port_arg: u16, authenticator: Option<Authenticator>) {
             r.method(Method::GET).with(authd_web_socket);
         })
         .default_resource(|r| r.f(|_| HttpResponse::NotFound().body("Service endpoint not found.")))
-        .finish()
-    })
-    .bind(&address)
-    .unwrap()
-    .run();
 }
 
 struct AuthenticatorState {
     pub handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>>,
-    pub host_port: Arc<u16>,
 }
 
 struct WebSocket {
@@ -63,7 +74,7 @@ impl Actor for WebSocket {
 impl StreamHandler<ws::Message, ws::ProtocolError> for WebSocket {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
         // process websocket messages
-        println!("WS: {:?}", msg);
+        debug!("WebSocket message: {:?}", msg);
         match msg {
             ws::Message::Ping(msg) => {
                 self.hb = Instant::now();
@@ -94,7 +105,7 @@ impl WebSocket {
             // check client heartbeats
             if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
                 // heartbeat timed out
-                println!("Websocket Client heartbeat failed, disconnecting!");
+                debug!("Websocket Client heartbeat failed, disconnecting!");
 
                 // stop actor
                 ctx.stop();
@@ -116,10 +127,10 @@ fn authd_create_acc(
     match create_acc(&info.2.clone(), &info.0.clone(), &info.1.clone()) {
         Ok(auth) => {
             *(req.state().handle.lock().unwrap()) = Some(Ok(auth));
-            HttpResponse::Ok().body("Account created and logged in to SAFE network.")
+            HttpResponse::Ok().body("Account created and logged in to SAFE Network.")
         }
         Err(auth_error) => {
-            let response_string = format!("Failed to create account: {} ", &auth_error);
+            let response_string = format!("Failed to create account: {}", &auth_error);
             *(req.state().handle.lock().unwrap()) = Some(Err(AuthError::from(auth_error)));
             HttpResponse::BadRequest().body(response_string)
         }
@@ -131,7 +142,7 @@ fn authd_login(info: Path<(String, String)>, req: HttpRequest<AuthenticatorState
     match log_in(&info.0.clone(), &info.1.clone()) {
         Ok(auth) => {
             *(req.state().handle.lock().unwrap()) = Some(Ok(auth));
-            HttpResponse::Ok().body("Logged in to SAFE network.")
+            HttpResponse::Ok().body("Logged in to SAFE Network.")
         }
         Err(auth_error) => {
             let response_string = format!("Login failed: {} ", &auth_error);
@@ -166,108 +177,29 @@ fn authd_web_socket(req: HttpRequest<AuthenticatorState>) -> Result<HttpResponse
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        authd_authorise, authd_create_acc, authd_login, authd_web_socket, AuthenticatorState,
-    };
-    use actix::prelude::*;
-    use actix_web::ws::{ClientWriter, Message as MessageEnum, ProtocolError};
-    use actix_web::{http::Method, test, ws, App, HttpMessage, HttpResponse};
+    use super::{create_acc, create_web_service, AuthenticatorState};
+    use actix_web::{http::Method, test, ws, HttpMessage};
     use futures::Stream;
     use rand::Rng;
     use safe_authenticator::{AuthError, Authenticator};
     use std::str::from_utf8;
     use std::sync::{Arc, Mutex};
-    use std::time::Duration;
 
-    struct WsClient(ClientWriter);
-
-    #[derive(Message)]
-    struct ClientCommand(String);
-
-    impl Actor for WsClient {
-        type Context = Context<Self>;
-
-        fn started(&mut self, ctx: &mut Context<Self>) {
-            // start heartbeats otherwise server will disconnect after 10 seconds
-            self.hb(ctx)
-        }
-
-        fn stopped(&mut self, _: &mut Context<Self>) {
-            println!("Disconnected");
-
-            // Stop application on disconnect
-            System::current().stop();
-        }
-    }
-
-    impl WsClient {
-        fn hb(&self, ctx: &mut Context<Self>) {
-            ctx.run_later(Duration::new(1, 0), |act, ctx| {
-                act.0.ping("");
-                act.hb(ctx);
-
-                // client should also check for a timeout here, similar to the
-                // server code
-            });
-        }
-    }
-
-    /// Handle stdin commands
-    impl Handler<ClientCommand> for WsClient {
-        type Result = ();
-
-        fn handle(&mut self, msg: ClientCommand, _ctx: &mut Context<Self>) {
-            self.0.text(msg.0)
-        }
-    }
-
-    /// Handle server websocket messages
-    impl StreamHandler<MessageEnum, ProtocolError> for WsClient {
-        fn handle(&mut self, msg: MessageEnum, _ctx: &mut Context<Self>) {
-            match msg {
-                MessageEnum::Text(txt) => println!("Server: {:?}", txt),
-                _ => (),
-            }
-        }
-
-        fn started(&mut self, _ctx: &mut Context<Self>) {
-            println!("Connected");
-        }
-
-        fn finished(&mut self, ctx: &mut Context<Self>) {
-            println!("Server disconnected");
-            ctx.stop()
-        }
-    }
-
-    fn create_test_service() -> App<AuthenticatorState> {
-        let handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>> =
-            Arc::new(Mutex::new(None));
-        let host_port = Arc::new(0);
-        App::with_state(AuthenticatorState {
-            handle: handle.clone(),
-            host_port: host_port.clone(),
-        })
-        .resource("/", |r| {
-            r.method(Method::GET).f(|_| HttpResponse::Ok());
-        })
-        .resource("/login/{locator}/{password}", |r| {
-            r.method(Method::POST).with(authd_login);
-        })
-        .resource("/create/{locator}/{password}/{invite}", |r| {
-            r.method(Method::POST).with(authd_create_acc);
-        })
-        .resource("/authorise/{auth_req}", |r| {
-            r.method(Method::POST).with(authd_authorise);
-        })
-        .resource("/ws", |r| {
-            r.method(Method::GET).with(authd_web_socket);
+    fn create_test_service(authenticator: Option<Authenticator>) -> test::TestServer {
+        let handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>> = match authenticator {
+            Some(auth) => Arc::new(Mutex::new(Some(Ok(auth)))),
+            None => Arc::new(Mutex::new(None)),
+        };
+        test::TestServer::with_factory(move || {
+            create_web_service(AuthenticatorState {
+                handle: handle.clone(),
+            })
         })
     }
 
     #[test]
     fn get_index() {
-        let mut srv = test::TestServer::with_factory(create_test_service);
+        let mut srv = create_test_service(None);
         let request = srv.client(Method::GET, "/").finish().unwrap();
         let response = srv.execute(request.send()).unwrap();
 
@@ -275,13 +207,15 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // we don't expose create acc from webservice yet
     fn post_create_account() {
         let mut rng = rand::thread_rng();
-        let locator: u32 = rng.gen();
+        let secret: u32 = rng.gen();
         let password: u32 = rng.gen();
         let invite: u16 = rng.gen();
-        let mut srv = test::TestServer::with_factory(create_test_service);
-        let endpoint = format!("/create/{}/{}/{}", locator, password, invite);
+        let mut srv = create_test_service(None);
+
+        let endpoint = format!("/create/{}/{}/{}", secret, password, invite);
         let request = srv.client(Method::POST, &endpoint).finish().unwrap();
         match srv.execute(request.send()) {
             Ok(response) => {
@@ -294,14 +228,14 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // we don't expose login from webservice yet
     fn post_login() {
         let mut rng = rand::thread_rng();
-        let locator: u32 = rng.gen();
+        let secret: u32 = rng.gen();
         let password: u32 = rng.gen();
         let invite: u16 = rng.gen();
-        let mut srv = test::TestServer::with_factory(create_test_service);
-
-        let create_acc_endpoint = format!("/create/{}/{}/{}", locator, password, invite);
+        let mut srv = create_test_service(None);
+        let create_acc_endpoint = format!("/create/{}/{}/{}", secret, password, invite);
         let create_acc_request = srv
             .client(Method::POST, &create_acc_endpoint)
             .finish()
@@ -315,7 +249,7 @@ mod tests {
             }
         }
 
-        let login_endpoint = format!("/login/{}/{}", locator, password);
+        let login_endpoint = format!("/login/{}/{}", secret, password);
         let login_request = srv.client(Method::POST, &login_endpoint).finish().unwrap();
 
         match srv.execute(login_request.send()) {
@@ -329,29 +263,15 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn post_authorise_app() {
-        let mut rng = rand::thread_rng();
-        let locator: u32 = rng.gen();
-        let password: u32 = rng.gen();
-        let invite: u16 = rng.gen();
-        let mut srv = test::TestServer::with_factory(create_test_service);
-
-        let create_acc_endpoint = format!("/create/{}/{}/{}", locator, password, invite);
-        let create_acc_request = srv
-            .client(Method::POST, &create_acc_endpoint)
-            .finish()
-            .unwrap();
-        match srv.execute(create_acc_request.send()) {
-            Ok(response) => {
-                assert!(response.status().is_success());
-            }
-            Err(req_err) => {
-                // TODO: Test consistently returning Timeout error here
-                println!("POST create account request error: {:?}", req_err);
-            }
+        fn random_str() -> String {
+            (0..4).map(|_| rand::random::<char>()).collect()
         }
-
+        let invite = &(random_str());
+        let secret = &(random_str());
+        let password = &(random_str());
+        let authenticator = create_acc(invite, secret, password).unwrap();
+        let mut srv = create_test_service(Some(authenticator));
         let auth_req = "bAAAAAACTBZGGMAAAAAABGAAAAAAAAAAANB2W45DFOIXGYZLTORSXELRUHAXDGOAACYAAAAAAAAAAAR3VNFWGM33SMQQEQ5LOORSXEICMMVZXIZLSCEAAAAAAAAAAATLBNFSFGYLGMUXG4ZLUEBGHIZBOAEBAAAAAAAAAAAAHAAAAAAAAAAAF64DVMJWGSYYFAAAAAAAAAAAAAAAAAAAQAAAAAIAAAAADAAAAABAAAAAAYAAAAAAAAAAAL5YHKYTMNFRU4YLNMVZQKAAAAAAAAAAAAAAAAAABAAAAAAQAAAAAGAAAAACAAAAAAE";
         let endpoint = format!("/authorise/{}", auth_req);
         let request = srv.client(Method::POST, &endpoint).finish().unwrap();
@@ -360,7 +280,7 @@ mod tests {
                 assert!(response.status().is_success());
                 let bytes = srv.execute(response.body()).unwrap();
                 let body = from_utf8(&bytes).unwrap();
-                assert_eq!(body, "Hello world!");
+                assert!(body.len() > 0);
             }
             Err(req_err) => {
                 println!("POST authorise request error: {:?}", req_err);
@@ -370,7 +290,7 @@ mod tests {
 
     #[test]
     fn get_web_socket() {
-        let mut srv = test::TestServer::with_factory(create_test_service);
+        let mut srv = create_test_service(None);
         let (reader, mut writer) = srv.ws_at("/ws").unwrap();
         writer.text("text");
 

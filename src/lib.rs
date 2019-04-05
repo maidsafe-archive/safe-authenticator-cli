@@ -1,3 +1,11 @@
+// Copyright 2019 MaidSafe.net limited.
+//
+// This SAFE Network Software is licensed to you under The General Public License (GPL), version 3.
+// Unless required by applicable law or agreed to in writing, the SAFE Network Software distributed
+// under the GPL Licence is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. Please review the Licences for the specific language governing
+// permissions and limitations relating to use of the SAFE Network Software.
+
 pub mod authd;
 
 use log::{debug, info};
@@ -333,11 +341,12 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
                         for (key, (_mdata_info, perms)) in app_access.into_iter() {
                             cont_perms.push((key, perms));
                         }
+
+                        apps.push(AuthedAppsList {
+                            app: app.info.clone(),
+                            perms: cont_perms,
+                        });
                     }
-                    apps.push(AuthedAppsList {
-                        app: app.info.clone(),
-                        perms: cont_perms,
-                    });
                 }
 
                 debug!("Returning list of authorised applications: {:?}", apps);

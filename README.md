@@ -124,7 +124,7 @@ $ cargo run -- --pretty --balance
 Secret:
 Password:
 Logged in the SAFE Network successfully!
-Account's current balance (PUTs done/avaialble): <done>/<available>
+Account's current balance (PUTs done/available): <done>/<available>
 ```
 
 ### Getting the list of authorised applications
@@ -150,7 +150,7 @@ $ cargo run -- --pretty --balance --apps
 Secret:
 Password:
 Logged in the SAFE Network successfully!
-Account's current balance (PUTs done/avaialble): <done>/<available>
+Account's current balance (PUTs done/available): <done>/<available>
 +---------------------------------+--------------+------------------+---------------------+
 | Authorised Applications         |              |                  |                     |
 +---------------------------------+--------------+------------------+---------------------+
@@ -185,7 +185,7 @@ $ curl -X POST http://localhost:41805/authorise/<auth req string>
 ```
 
 ## License
-This SAFE Network application is dual-licensed under the Modified BSD ([LICENSE-BSD](LICENSE-BSD) https://opensource.org/licenses/BSD-3-Clause) or the MIT license ([LICENSE-MIT](LICENSE-MIT) https://opensource.org/licenses/MIT) at your option.
+This SAFE Network application is licensed under the General Public License (GPL), version 3 ([LICENSE](LICENSE) http://www.gnu.org/licenses/gpl-3.0.en.html).
 
 ## Contribute
 Copyrights in the SAFE Network are retained by their contributors. No copyright assignment is required to contribute to this project.
