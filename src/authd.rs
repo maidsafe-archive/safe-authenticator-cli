@@ -45,7 +45,7 @@ fn create_web_service(state: AuthenticatorState) -> App<AuthenticatorState> {
             r.method(Method::GET).f(|_| HttpResponse::Ok());
         })
         .resource("/authorise/{auth_req}", |r| {
-            r.method(Method::POST).with(authd_authorise);
+            r.method(Method::GET).with(authd_authorise);
         })
         .resource("/ws", |r| {
             r.method(Method::GET).with(authd_web_socket);
@@ -263,7 +263,7 @@ mod tests {
     }
 
     #[test]
-    fn post_authorise_app() {
+    fn get_authorise_app() {
         fn random_str() -> String {
             (0..4).map(|_| rand::random::<char>()).collect()
         }
@@ -272,9 +272,8 @@ mod tests {
         let password = &(random_str());
         let authenticator = create_acc(invite, secret, password).unwrap();
         let mut srv = create_test_service(Some(authenticator));
-        let auth_req = "bAAAAAACTBZGGMAAAAAABGAAAAAAAAAAANB2W45DFOIXGYZLTORSXELRUHAXDGOAACYAAAAAAAAAAAR3VNFWGM33SMQQEQ5LOORSXEICMMVZXIZLSCEAAAAAAAAAAATLBNFSFGYLGMUXG4ZLUEBGHIZBOAEBAAAAAAAAAAAAHAAAAAAAAAAAF64DVMJWGSYYFAAAAAAAAAAAAAAAAAAAQAAAAAIAAAAADAAAAABAAAAAAYAAAAAAAAAAAL5YHKYTMNFRU4YLNMVZQKAAAAAAAAAAAAAAAAAABAAAAAAQAAAAAGAAAAACAAAAAAE";
-        let endpoint = format!("/authorise/{}", auth_req);
-        let request = srv.client(Method::POST, &endpoint).finish().unwrap();
+        let endpoint = "/authorise/bAAAAAACTBZGGMAAAAAABGAAAAAAAAAAANB2W45DFOIXGYZLTORSXELRUHAXDGOAACYAAAAAAAAAAAR3VNFWGM33SMQQEQ5LOORSXEICMMVZXIZLSCEAAAAAAAAAAATLBNFSFGYLGMUXG4ZLUEBGHIZBOAEBAAAAAAAAAAAAHAAAAAAAAAAAF64DVMJWGSYYFAAAAAAAAAAAAAAAAAAAQAAAAAIAAAAADAAAAABAAAAAAYAAAAAAAAAAAL5YHKYTMNFRU4YLNMVZQKAAAAAAAAAAAAAAAAAABAAAAAAQAAAAAGAAAAACAAAAAAE";
+        let request = srv.client(Method::GET, &endpoint).finish().unwrap();
         match srv.execute(request.send()) {
             Ok(response) => {
                 assert!(response.status().is_success());
@@ -283,7 +282,7 @@ mod tests {
                 assert!(body.len() > 0);
             }
             Err(req_err) => {
-                println!("POST authorise request error: {:?}", req_err);
+                println!("GET authorise request error: {:?}", req_err);
             }
         }
     }
