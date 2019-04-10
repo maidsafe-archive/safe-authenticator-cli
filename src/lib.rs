@@ -31,6 +31,10 @@ use safe_core::{client as safe_core_client, CoreError};
 
 use maidsafe_utilities::serialisation::deserialise;
 
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
+
 #[derive(Debug)]
 pub struct AuthedAppsList {
     pub app: AppExchangeInfo,
@@ -82,7 +86,7 @@ pub struct AuthedAppsList {
 pub fn create_acc(invite: &str, secret: &str, password: &str) -> Result<Authenticator, String> {
     debug!("Attempting to create a SAFE account...");
     match Authenticator::create_acc(secret, password, invite, || {
-        eprintln!("{}", "Disconnected from network")
+        eprintln!("{}", "Disconnected from network");
     }) {
         Ok(auth) => {
             debug!("Returning account just created");
@@ -129,9 +133,7 @@ pub fn create_acc(invite: &str, secret: &str, password: &str) -> Result<Authenti
 ///```
 pub fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
     debug!("Attempting to log in...");
-    match Authenticator::login(secret, password, || {
-        eprintln!("{}", "Disconnected from network")
-    }) {
+    match Authenticator::login(secret, password, || eprintln!("Disconnected from network")) {
         Ok(auth) => {
             debug!("Returning logged-in Authenticator instance");
             Ok(auth)
@@ -450,7 +452,7 @@ fn gen_cont_auth_response(
     let permissions = cont_req.containers.clone();
     let app_id = cont_req.app.id.clone();
 
-    let resp = try_run(authenticator, move |client| {
+    try_run(authenticator, move |client| {
         let c2 = client.clone();
         let c3 = client.clone();
         let c4 = client.clone();
@@ -490,21 +492,18 @@ fn gen_cont_auth_response(
                 access_container::put_entry(&c4, &app_id, &app_keys, &perms, version)
             })
             .and_then(move |_| {
-                // TODO: we probably don't need to encode a response,
-                // but just exit successfully?
                 debug!("Encoding response...");
                 let resp = encode_msg(&IpcMsg::Resp {
                     req_id,
                     resp: IpcResp::Containers(Ok(())),
                 })?;
+
+                debug!("Returning containers auth response generated: {:?}", resp);
                 Ok(resp)
             })
             .map_err(AuthError::from)
     })
-    .unwrap();
-
-    debug!("Returning containers auth response generated: {:?}", resp);
-    Ok(resp)
+    .map_err(|err| format!("Failed to generate response: {}", err))
 }
 
 // Helper function to generate an unregistered authorisation response
@@ -528,7 +527,7 @@ fn gen_shared_md_auth_response(
     req_id: u32,
     share_mdata_req: ShareMDataReq,
 ) -> Result<String, String> {
-    let resp = try_run(authenticator, move |client| {
+    try_run(authenticator, move |client| {
         let client_cloned0 = client.clone();
         let client_cloned1 = client.clone();
         config::get_app(client, &share_mdata_req.app.id).and_then(move |app_info| {
@@ -551,22 +550,260 @@ fn gen_shared_md_auth_response(
                     )
                 })
                 .buffer_unordered(num_mdata)
-                .map_err(AuthError::CoreError)
+                .map_err(AuthError::from)
                 .for_each(|()| Ok(()))
                 .and_then(move |()| {
-                    // TODO: we probably don't need to encode a response,
-                    // but just exit successfully?
                     debug!("Encoding response...");
                     let resp = encode_msg(&IpcMsg::Resp {
                         req_id,
                         resp: IpcResp::ShareMData(Ok(())),
                     })?;
+
+                    debug!("Returning shared MD auth response generated: {:?}", resp);
                     Ok(resp)
                 })
         })
     })
-    .unwrap();
+    .map_err(|err| format!("Failed to generate response: {}", err))
+}
 
-    debug!("Returning shared MD auth response generated: {:?}", resp);
-    Ok(resp)
+#[cfg(test)]
+mod tests {
+    use super::{acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app};
+
+    // The app auth request strings encode the following app info:
+    /*
+        id: 'net.maidsafe.test.authenticator.cli.id',
+        name: 'Rust Authenticator CLI Test',
+        vendor: 'MaidSafe.net Ltd'
+    */
+    // perms: [ ("_public", {Read} ) ]
+    static APP_AUTH_REQ: &str = "bAAAAAABU6IEAEAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAADQAAAAAAAAAAC7OB2WE3DJMMAQAAAAAAAAAAAAAAAAAAI";
+    // perms: [ ("_public", {Read} ), ("_music", {Insert, Update}) ]
+    static CONT_AUTH_REQ: &str = "bAAAAAAA633HNCAIAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAAAYAAAAAAAAAAAX3NOVZWSYYCAAAAAAAAAAAACAAAAABAAAAAAE";
+
+    static APP_ID: &str = "net.maidsafe.test.authenticator.cli.id";
+
+    fn random_str() -> String {
+        (0..4).map(|_| rand::random::<char>()).collect()
+    }
+
+    #[test]
+    fn account_creation_and_login_test() {
+        let my_secret = &(random_str());
+        let my_password = &(random_str());
+
+        // successfully create an account
+        let acc_created = create_acc("anInvite", my_secret, my_password);
+        match acc_created {
+            Ok(_) => assert!(true),
+            Err(err) => panic!(err),
+        }
+
+        // fail to create an account with same secret
+        let acc_not_created = create_acc("anInvite", my_secret, my_password);
+        match acc_not_created {
+            Ok(_) => panic!("Account shouldn't have been created successfully"),
+            Err(err) => assert_eq!(err, "Failed to create an account: CoreError(Account exists - CoreError::RoutingClientError -> AccountExists)"),
+        }
+
+        // successfully log in
+        let auth = log_in(my_secret, my_password);
+        match auth {
+            Ok(_) => assert!(true),
+            Err(err) => panic!(err),
+        }
+
+        // fail to log in with invalid secret
+        let other_secret = &(random_str());
+        let auth = log_in(other_secret, my_password);
+        match auth {
+            Ok(_) => panic!("Shouldn't have logged in sucessfully"),
+            Err(err) => assert_eq!(err, "Failed to log in: CoreError(No such account - CoreError::RoutingClientError -> NoSuchAccount)"),
+        }
+
+        // fail to log in with invalid password
+        let other_password = &(random_str());
+        let auth = log_in(my_secret, other_password);
+        match auth {
+            Ok(_) => panic!("Shouldn't have logged in sucessfully"),
+            Err(err) => assert_eq!(err, "Failed to log in: CoreError(Symmetric decryption failure - CoreError::SymmetricDecipherFailure)"),
+        }
+    }
+
+    #[test]
+    fn authorise_apps_tests() {
+        let my_secret = &(random_str());
+        let my_password = &(random_str());
+
+        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+
+        // fail to authorise app with invalid request
+        let invalid_auth_req = "fddfds";
+        let auth_response = authorise_app(&auth, invalid_auth_req);
+        match auth_response {
+            Ok(_) => panic!("It should have failed to authorise"),
+            Err(err) => assert_eq!(
+                err,
+                "Failed to decode the auth request string: EncodeDecodeError"
+            ),
+        }
+
+        // successfully authorise a registered app auth request
+        let auth_response = authorise_app(&auth, APP_AUTH_REQ);
+        match auth_response {
+            Ok(res) => assert!(!res.is_empty()),
+            Err(err) => panic!(err),
+        }
+
+        // successfully authorise an unregistered app auth request
+        let unreg_auth_req =
+            "bAAAAAAFVMRTRUAQAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAI";
+        let unreg_auth_res = "bAEAAAAFVMRTRUAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC";
+        let auth_response = authorise_app(&auth, unreg_auth_req);
+        match auth_response {
+            Ok(res) => assert_eq!(res, unreg_auth_res),
+            Err(err) => panic!(err),
+        }
+
+        // successfully authorise containers request
+        let cont_auth_res = "bAEAAAAA633HNCAIAAAAAAAAAAAAQ";
+        let auth_response = authorise_app(&auth, CONT_AUTH_REQ);
+        match auth_response {
+            Ok(res) => assert_eq!(res, cont_auth_res),
+            Err(err) => panic!(err),
+        }
+
+        // fail to authorise share MD request for an inexisting MD
+        let shared_md_auth_req = "bAAAAAAHI4K23GAYAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAAMEPAAAAAAAAAAVAYFZ5TT47GQRNWBSQUD6FQVU7BOKP24TNSYPGFEOGCHFIV5ULTAEAQAAAAAE";
+        let auth_response = authorise_app(&auth, shared_md_auth_req);
+        match auth_response {
+            Ok(_) => panic!("It should have failed to authorise to share MD"),
+            Err(err) => assert_eq!(err, "Failed to generate response: Core error: Routing client error -> Requested data not found"),
+        }
+
+        // fail to authorise containers request for an inexisting container
+        let invalid_cont_auth_req = "bAAAAAACATC2HMAIAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAABAAAAAAAAAAAAX3JNZ3GC3DJMQBAAAAAAAAAAAABAAAAAAQAAAAAC";
+        let auth_response = authorise_app(&auth, invalid_cont_auth_req);
+        match auth_response {
+            Ok(_) => panic!("It should have failed to authorise invalid container request"),
+            Err(err) => assert_eq!(
+                err,
+                "Failed to generate response: \'_invalid\' not found in the access container"
+            ),
+        }
+
+        // fail to authorise app with invalid request due to inexisting container in the list of requested perms
+        /* TODO: this doesn't fail as it was expected
+        let invalid_app_auth_req = "bAAAAAAF5Q66DAAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAAEAAAAAAAAAAAC7NFXHMYLMNFSACAAAAAAAAAAAAAAAAAAB";
+        let auth_response = authorise_app(&auth, invalid_app_auth_req);
+        match auth_response {
+            Ok(_) => panic!("It should have failed to authorise app request"),
+            Err(err) => assert_eq!(err, "Failed to generate response: \'_invalid_container\' not found in the access container"),
+        }*/
+    }
+
+    #[test]
+    fn acc_info_tests() {
+        let my_secret = &(random_str());
+        let my_password = &(random_str());
+
+        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+
+        // verify the PUTs consumed in creating an account by fetching the account info
+        let acc_info = acc_info(&auth);
+        match acc_info {
+            Ok((done, available)) => {
+                assert_eq!(done, 10);
+                assert_eq!(available, 990);
+            }
+            Err(_) => panic!("Failed to retrieve account info"),
+        }
+    }
+
+    #[test]
+    fn authed_apps_tests() {
+        use safe_core::ipc::Permission;
+        use std::collections::BTreeSet;
+
+        let my_secret = &(random_str());
+        let my_password = &(random_str());
+
+        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+
+        // list of authorised apps shall be empty with a freshly created account
+        let authed_apps_res = authed_apps(&auth);
+        match authed_apps_res {
+            Ok(authed_vec) => assert_eq!(authed_vec.len(), 0), // This should pass
+            Err(_) => panic!("It should have retieved the list of authorised apps"),
+        }
+
+        // after authorising an app it is returned in the list retrieved by authed_apps
+        authorise_app(&auth, APP_AUTH_REQ)
+            .expect("Failed to authorise an app before calling authed_apps");
+        let authed_apps_res = authed_apps(&auth);
+        match authed_apps_res {
+            Ok(authed_vec) => {
+                assert_eq!(authed_vec.len(), 1);
+                let app_exchange_info = &authed_vec[0].app;
+                assert_eq!(app_exchange_info.id, APP_ID);
+                assert_eq!(app_exchange_info.name, "Rust Authenticator CLI Test");
+                assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
+                let mut perms = BTreeSet::new();
+                perms.insert(Permission::Read);
+                assert_eq!(authed_vec[0].perms[0], ("_public".to_string(), perms));
+            }
+            Err(_) => panic!("It should have retrieved the list of authorised apps"),
+        }
+
+        // after authorising a containers auth request it is returned in the permissions list retrieved by authed_apps
+        authorise_app(&auth, CONT_AUTH_REQ)
+            .expect("Failed to authorise containers auth req before calling authed_apps");
+        let authed_apps_res = authed_apps(&auth);
+        match authed_apps_res {
+            Ok(mut authed_vec) => {
+                assert_eq!(authed_vec.len(), 1);
+                let app_exchange_info = &authed_vec[0].app;
+                assert_eq!(app_exchange_info.id, APP_ID);
+                assert_eq!(app_exchange_info.name, "Rust Authenticator CLI Test");
+                assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
+
+                let mut public_perms = BTreeSet::new();
+                public_perms.insert(Permission::Read);
+
+                let mut music_perms = BTreeSet::new();
+                music_perms.insert(Permission::Insert);
+                music_perms.insert(Permission::Update);
+
+                let mut cont_perms = vec![
+                    ("_public".to_string(), public_perms),
+                    ("_music".to_string(), music_perms),
+                ];
+                cont_perms.sort();
+                authed_vec[0].perms.sort();
+                assert_eq!(authed_vec[0].perms, cont_perms);
+            }
+            Err(_) => panic!("It should have retrieved the list of authorised apps"),
+        }
+    }
+
+    #[test]
+    fn revoke_app_tests() {
+        let my_secret = &(random_str());
+        let my_password = &(random_str());
+
+        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+
+        // after revoking an app it is removed from the list retrieved by authed_apps
+        authorise_app(&auth, APP_AUTH_REQ)
+            .expect("Failed to authorise an app before calling authed_apps");
+        revoke_app(&auth, APP_ID.to_string())
+            .expect("Failed to revoke the previously authorised app");
+
+        let authed_apps_res = authed_apps(&auth);
+        match authed_apps_res {
+            Ok(authed_vec) => assert_eq!(authed_vec.len(), 0),
+            Err(_) => panic!("It should have retrieved the list of authorised apps"),
+        }
+    }
 }
