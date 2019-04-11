@@ -1,9 +1,10 @@
-|Documentation|Linux/macOS/Windows|
-|:-----------:|:-----------------:|
-| [![Documentation](https://docs.rs/safe-authenticator-cli/badge.svg)](https://docs.rs/safe-authenticator-cli) | [![Build Status](https://travis-ci.com/maidsafe/safe-authenticator-cli.svg?branch=master)](https://travis-ci.com/maidsafe/safe-authenticator-cli) |
+|Documentation|Linux/macOS/Windows|Coverage Status|
+|:-----------:|:-----------------:|:-------------:|
+| [![Documentation](https://docs.rs/safe-authenticator-cli/badge.svg)](https://docs.rs/safe-authenticator-cli) | [![Build Status](https://travis-ci.com/maidsafe/safe-authenticator-cli.svg?branch=master)](https://travis-ci.com/maidsafe/safe-authenticator-cli) | [![Coverage Status](https://codecov.io/gh/maidsafe/safe-authenticator-cli/branch/master/graph/badge.svg)](https://codecov.io/gh/maidsafe/safe-authenticator-cli) |
 
 | [MaidSafe website](https://maidsafe.net) | [SAFE Dev Forum](https://forum.safedev.org) | [SAFE Network Forum](https://safenetforum.org) |
 |:----------------------------------------:|:-------------------------------------------:|:----------------------------------------------:|
+
 
 # SAFE Authenticator CLI
 This crate implements a CLI (Command Line Interface) for the [safe_authenticator](https://github.com/maidsafe/safe_client_libs/tree/master/safe_authenticator) crate.
