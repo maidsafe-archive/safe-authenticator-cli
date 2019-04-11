@@ -62,6 +62,7 @@ after_success:
         echo "Calculating coverage of ${file}..."
         mkdir -p "target/cov/$(basename $file)"; \
         ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; \
+        ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file" --coveralls-id=$TRAVIS_JOB_ID; \
       done &&
       bash <(curl -s https://codecov.io/bash) -t 6bfd35b4-f75a-4e20-b656-f2a07838976f &&
       echo "Uploaded code coverage to codecov.io";
