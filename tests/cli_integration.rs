@@ -10,10 +10,8 @@ use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use std::fs;
 use std::process::Command;
 
-#[macro_use]
 extern crate serde_json;
 
 static PRETTY_ACCOUNT_CREATION_RESPONSE: &str = "Account was created successfully!\n";
@@ -24,7 +22,6 @@ static AUTHED_REQ: &str = "bAAAAAAFBMHKYWAAAAAABWAAAAAAAAAAANZSXILTNMFUWI43BMZSS
 static AUTHED_RESPONSE_START: &str = "bAEAAAAFBMHKYW";
 
 static CONFIG_FILE: &str = "./tests/test.config.json";
-
 
 #[test]
 fn calling_safe_create_acc() {
@@ -47,14 +44,10 @@ fn calling_safe_create_acc_with_env_vars() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
     let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
 
-    cmd
-		.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
-		.env("SAFE_AUTH_SECRET", "something")
-		.env("SAFE_AUTH_PASSWORD", "else")
-        .args(&vec![
-            "--invite-token",
-            &rand_string
-        ])
+    cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
+        .env("SAFE_AUTH_SECRET", "something")
+        .env("SAFE_AUTH_PASSWORD", "else")
+        .args(&vec!["--invite-token", &rand_string])
         .assert()
         .success();
 }
@@ -64,23 +57,15 @@ fn calling_safe_create_acc_with_only_one_env_var() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
     let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
 
-    cmd
-		.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
-		.env("SAFE_AUTH_SECRET", "something")
-        .args(&vec![
-            "--invite-token",
-            &rand_string
-        ])
+    cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
+        .env("SAFE_AUTH_SECRET", "something")
+        .args(&vec!["--invite-token", &rand_string])
         .assert()
         .failure();
 
-    cmd
-		.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
-		.env("SAFE_AUTH_PASSWORD", "something")
-        .args(&vec![
-            "--invite-token",
-            &rand_string
-        ])
+    cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
+        .env("SAFE_AUTH_PASSWORD", "something")
+        .args(&vec!["--invite-token", &rand_string])
         .assert()
         .failure();
 }
