@@ -160,7 +160,7 @@ fn authd_authorise(
         &*(http_req.state().handle.lock().unwrap());
     match authenticator {
         Some(Ok(auth_handle)) => {
-            let response = authorise_app(auth_handle, &authenticator_req);
+            let response = authorise_app(auth_handle, &authenticator_req, |_| true);
             match response {
                 Ok(resp) => HttpResponse::Ok().body(resp),
                 Err(err) => HttpResponse::BadRequest().body(err),

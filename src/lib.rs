@@ -160,7 +160,7 @@ pub fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
 /// # create_acc("anInvite", my_secret, my_password).unwrap();
 /// let auth_req = "bAAAAAAFBMHKYWAAAAAABWAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C453FMJQXA4BONFSAACYAAAAAAAAAABLWKYSBOBYCAVDFON2A2AAAAAAAAAAAJVQWSZCTMFTGKICMORSC4AACAAAAAAAAAAAAUAAAAAAAAAAAL5SG6Y3VNVSW45DTAEAAAAAAAAAAAAIAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
 /// let authenticator = log_in(my_secret, my_password).unwrap();
-/// let auth_response = authorise_app(&authenticator, auth_req);
+/// let auth_response = authorise_app(&authenticator, auth_req, |_| true);
 /// match auth_response {
 ///    Ok(_) => assert!(true), // This should pass
 ///    Err(_) => assert!(false)
@@ -180,14 +180,20 @@ pub fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
 /// /// Using an invalid auth request string
 /// let auth_req = "invalid-auth-req-string";
 /// let authenticator = log_in(my_secret, my_password).unwrap();
-/// let auth_response = authorise_app(&authenticator, auth_req);
+/// let auth_response = authorise_app(&authenticator, auth_req, |_| true);
 /// match auth_response {
 ///    Ok(_) => assert!(false), // This should not pass
 ///    Err(message) => assert!(message.contains("EncodeDecodeError"))
 /// }
 ///```
-pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String, String> {
-    debug!("Attempting to authorise application...");
+pub fn authorise_app<F>(
+    authenticator: &Authenticator,
+    req: &str,
+    allow: F,
+) -> Result<String, String>
+where
+    F: Fn(IpcReq) -> bool,
+{
     let req_msg = match decode_msg(req) {
         Ok(msg) => msg,
         Err(err) => {
@@ -202,12 +208,19 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
     let ipc_req = utils_run(authenticator, move |client| decode_ipc_msg(client, req_msg));
     match ipc_req {
         Ok(IpcMsg::Req {
-            req: IpcReq::Auth(auth_req),
+            req: IpcReq::Auth(app_auth_req),
             req_id,
         }) => {
             info!("Request was recognised as a general app auth request");
-            debug!("Decoded request (req_id={:?}): {:?}", req_id, auth_req);
-            gen_auth_response(authenticator, req_id, auth_req)
+            debug!("Decoded request (req_id={:?}): {:?}", req_id, app_auth_req);
+            debug!("Checking if the authorisation shall be allowed...");
+            if !allow(IpcReq::Auth(app_auth_req.clone())) {
+                debug!("Authorisation request was denied!");
+                return Err("Authorisation request was denied!".to_string());
+            }
+
+            debug!("Allowed!. Attempting to authorise application...");
+            gen_auth_response(authenticator, req_id, app_auth_req)
         }
         Ok(IpcMsg::Req {
             req: IpcReq::Containers(cont_req),
@@ -215,6 +228,14 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
         }) => {
             info!("Request was recognised as a containers auth request");
             debug!("Decoded request (req_id={:?}): {:?}", req_id, cont_req);
+
+            debug!("Checking if the containers authorisation shall be allowed...");
+            if !allow(IpcReq::Containers(cont_req.clone())) {
+                debug!("Authorisation request was denied!");
+                return Err("Authorisation request was denied!".to_string());
+            }
+
+            debug!("Allowed!. Attempting to grant permissions to the containers...");
             gen_cont_auth_response(authenticator, req_id, cont_req)
         }
         Ok(IpcMsg::Req {
@@ -223,6 +244,14 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
         }) => {
             info!("Request was recognised as an unregistered auth request");
             debug!("Decoded request (req_id={:?}): {:?}", req_id, user_data);
+
+            debug!("Checking if the authorisation shall be allowed...");
+            if !allow(IpcReq::Unregistered(user_data)) {
+                debug!("Authorisation request was denied!");
+                return Err("Authorisation request was denied!".to_string());
+            }
+
+            debug!("Allowed!");
             gen_unreg_auth_response(req_id)
         }
         Ok(IpcMsg::Req {
@@ -234,6 +263,14 @@ pub fn authorise_app(authenticator: &Authenticator, req: &str) -> Result<String,
                 "Decoded request (req_id={:?}): {:?}",
                 req_id, share_mdata_req
             );
+
+            debug!("Checking if the authorisation to share a MD shall be allowed...");
+            if !allow(IpcReq::ShareMData(share_mdata_req.clone())) {
+                debug!("Authorisation request was denied!");
+                return Err("Authorisation request was denied!".to_string());
+            }
+
+            debug!("Allowed!. Attempting to grant permissions to the MD...");
             gen_shared_md_auth_response(authenticator, req_id, share_mdata_req)
         }
         Err((error_code, description, _err)) => Err(format!(
@@ -640,7 +677,7 @@ mod tests {
 
         // fail to authorise app with invalid request
         let invalid_auth_req = "fddfds";
-        let auth_response = authorise_app(&auth, invalid_auth_req);
+        let auth_response = authorise_app(&auth, invalid_auth_req, |_| true);
         match auth_response {
             Ok(_) => panic!("It should have failed to authorise"),
             Err(err) => assert_eq!(
@@ -650,7 +687,7 @@ mod tests {
         }
 
         // successfully authorise a registered app auth request
-        let auth_response = authorise_app(&auth, APP_AUTH_REQ);
+        let auth_response = authorise_app(&auth, APP_AUTH_REQ, |_| true);
         match auth_response {
             Ok(res) => assert!(!res.is_empty()),
             Err(err) => panic!(err),
@@ -660,7 +697,7 @@ mod tests {
         let unreg_auth_req =
             "bAAAAAAFVMRTRUAQAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAI";
         let unreg_auth_res = "bAEAAAAFVMRTRUAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC";
-        let auth_response = authorise_app(&auth, unreg_auth_req);
+        let auth_response = authorise_app(&auth, unreg_auth_req, |_| true);
         match auth_response {
             Ok(res) => assert_eq!(res, unreg_auth_res),
             Err(err) => panic!(err),
@@ -668,7 +705,7 @@ mod tests {
 
         // successfully authorise containers request
         let cont_auth_res = "bAEAAAAA633HNCAIAAAAAAAAAAAAQ";
-        let auth_response = authorise_app(&auth, CONT_AUTH_REQ);
+        let auth_response = authorise_app(&auth, CONT_AUTH_REQ, |_| true);
         match auth_response {
             Ok(res) => assert_eq!(res, cont_auth_res),
             Err(err) => panic!(err),
@@ -676,7 +713,7 @@ mod tests {
 
         // fail to authorise share MD request for an inexisting MD
         let shared_md_auth_req = "bAAAAAAHI4K23GAYAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAAMEPAAAAAAAAAAVAYFZ5TT47GQRNWBSQUD6FQVU7BOKP24TNSYPGFEOGCHFIV5ULTAEAQAAAAAE";
-        let auth_response = authorise_app(&auth, shared_md_auth_req);
+        let auth_response = authorise_app(&auth, shared_md_auth_req, |_| true);
         match auth_response {
             Ok(_) => panic!("It should have failed to authorise to share MD"),
             Err(err) => assert_eq!(err, "Failed to generate response: Core error: Routing client error -> Requested data not found"),
@@ -684,7 +721,7 @@ mod tests {
 
         // fail to authorise containers request for an inexisting container
         let invalid_cont_auth_req = "bAAAAAACATC2HMAIAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAABAAAAAAAAAAAAX3JNZ3GC3DJMQBAAAAAAAAAAAABAAAAAAQAAAAAC";
-        let auth_response = authorise_app(&auth, invalid_cont_auth_req);
+        let auth_response = authorise_app(&auth, invalid_cont_auth_req, |_| true);
         match auth_response {
             Ok(_) => panic!("It should have failed to authorise invalid container request"),
             Err(err) => assert_eq!(
@@ -739,7 +776,7 @@ mod tests {
         }
 
         // after authorising an app it is returned in the list retrieved by authed_apps
-        authorise_app(&auth, APP_AUTH_REQ)
+        authorise_app(&auth, APP_AUTH_REQ, |_| true)
             .expect("Failed to authorise an app before calling authed_apps");
         let authed_apps_res = authed_apps(&auth);
         match authed_apps_res {
@@ -757,7 +794,7 @@ mod tests {
         }
 
         // after authorising a containers auth request it is returned in the permissions list retrieved by authed_apps
-        authorise_app(&auth, CONT_AUTH_REQ)
+        authorise_app(&auth, CONT_AUTH_REQ, |_| true)
             .expect("Failed to authorise containers auth req before calling authed_apps");
         let authed_apps_res = authed_apps(&auth);
         match authed_apps_res {
@@ -795,7 +832,7 @@ mod tests {
         let auth = create_acc("anInvite", my_secret, my_password).unwrap();
 
         // after revoking an app it is removed from the list retrieved by authed_apps
-        authorise_app(&auth, APP_AUTH_REQ)
+        authorise_app(&auth, APP_AUTH_REQ, |_| true)
             .expect("Failed to authorise an app before calling authed_apps");
         revoke_app(&auth, APP_ID.to_string())
             .expect("Failed to revoke the previously authorised app");
