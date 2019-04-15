@@ -6,7 +6,7 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use super::{authorise_app, create_acc, log_in};
+use super::{authorise_app, create_acc, log_in, AuthAllowPrompt};
 use actix_web::{actix::*, http::Method, server, ws, App, Error, HttpRequest, HttpResponse, Path};
 use log::debug;
 use safe_authenticator::{AuthError, Authenticator};
@@ -18,8 +18,14 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 // How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-pub fn run(port_arg: u16, authenticator: Option<Authenticator>) {
-    let handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>> = match authenticator {
+type SharedHandleType = Arc<Mutex<Option<Result<Authenticator, AuthError>>>>;
+
+pub fn run(
+    port_arg: u16,
+    authenticator: Option<Authenticator>,
+    prompt_to_allow: &'static AuthAllowPrompt,
+) {
+    let handle: SharedHandleType = match authenticator {
         Some(auth) => Arc::new(Mutex::new(Some(Ok(auth)))),
         None => Arc::new(Mutex::new(None)),
     };
@@ -31,6 +37,7 @@ pub fn run(port_arg: u16, authenticator: Option<Authenticator>) {
     server::new(move || {
         create_web_service(AuthenticatorState {
             handle: handle.clone(),
+            allow_auth_cb: Arc::new(prompt_to_allow),
         })
         .finish()
     })
@@ -54,7 +61,8 @@ fn create_web_service(state: AuthenticatorState) -> App<AuthenticatorState> {
 }
 
 struct AuthenticatorState {
-    pub handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>>,
+    pub handle: SharedHandleType,
+    pub allow_auth_cb: Arc<&'static AuthAllowPrompt>,
 }
 
 struct WebSocket {
@@ -158,9 +166,10 @@ fn authd_authorise(
 ) -> HttpResponse {
     let authenticator: &Option<Result<Authenticator, AuthError>> =
         &*(http_req.state().handle.lock().unwrap());
+    let allow: &'static AuthAllowPrompt = *(http_req.state().allow_auth_cb);
     match authenticator {
         Some(Ok(auth_handle)) => {
-            let response = authorise_app(auth_handle, &authenticator_req, |_| true);
+            let response = authorise_app(auth_handle, &authenticator_req, allow);
             match response {
                 Ok(resp) => HttpResponse::Ok().body(resp),
                 Err(err) => HttpResponse::BadRequest().body(err),
@@ -177,22 +186,23 @@ fn authd_web_socket(req: HttpRequest<AuthenticatorState>) -> Result<HttpResponse
 
 #[cfg(test)]
 mod tests {
-    use super::{create_acc, create_web_service, AuthenticatorState};
+    use super::{create_acc, create_web_service, AuthenticatorState, SharedHandleType};
     use actix_web::{http::Method, test, ws, HttpMessage};
     use futures::Stream;
     use rand::Rng;
-    use safe_authenticator::{AuthError, Authenticator};
+    use safe_authenticator::Authenticator;
     use std::str::from_utf8;
     use std::sync::{Arc, Mutex};
 
     fn create_test_service(authenticator: Option<Authenticator>) -> test::TestServer {
-        let handle: Arc<Mutex<Option<Result<Authenticator, AuthError>>>> = match authenticator {
+        let handle: SharedHandleType = match authenticator {
             Some(auth) => Arc::new(Mutex::new(Some(Ok(auth)))),
             None => Arc::new(Mutex::new(None)),
         };
         test::TestServer::with_factory(move || {
             create_web_service(AuthenticatorState {
                 handle: handle.clone(),
+                allow_auth_cb: Arc::new(&|_| true),
             })
         })
     }
