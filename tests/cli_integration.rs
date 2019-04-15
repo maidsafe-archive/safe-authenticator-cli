@@ -114,6 +114,7 @@ fn calling_safe_auth_with_registered_req() {
     auth_cmd
         .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .args(&vec![
+            "--allow-all-auth",
             "--invite-token",
             "aaaa",
             "-r",

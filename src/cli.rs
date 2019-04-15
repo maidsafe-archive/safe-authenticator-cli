@@ -6,7 +6,7 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use log::info;
+use log::{info, warn};
 use prettytable::Table;
 
 use routing::Action;
@@ -65,6 +65,10 @@ pub struct CmdArgs {
     /// Port number where the Authenticator webservice shall be listening to
     #[structopt(short = "d", long = "daemon")]
     port: Option<u16>,
+    /// Flag to automatically allow any authorisation request received,
+    /// otherwise the user is a prompted to allow each request individually
+    #[structopt(long = "allow-all-auth")]
+    allow_all: bool,
 }
 
 pub fn run() -> Result<(), String> {
@@ -89,9 +93,18 @@ pub fn run() -> Result<(), String> {
         }
     }
 
+    if args.allow_all {
+        warn!("All authorisation requests will be automatically allowed!");
+    };
+
     // Authorise the application if a auth req string was provided
     if let Some(req) = &args.req_str {
-        let auth_response = authorise_app(&authenticator, &req, prompt_to_allow)?;
+        let auth_response = if args.allow_all {
+            authorise_app(&authenticator, &req, &|_| true)?
+        } else {
+            authorise_app(&authenticator, &req, &prompt_to_allow)?
+        };
+
         if args.pretty {
             print!("Authorisation response string: ");
         }
@@ -126,7 +139,11 @@ pub fn run() -> Result<(), String> {
     };
 
     if let Some(host_port) = args.port {
-        authd::run(host_port, Some(authenticator));
+        if args.allow_all {
+            authd::run(host_port, Some(authenticator), &|_| true);
+        } else {
+            authd::run(host_port, Some(authenticator), &prompt_to_allow);
+        };
     }
 
     Ok(())
