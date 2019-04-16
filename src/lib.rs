@@ -621,6 +621,9 @@ fn gen_shared_md_auth_response(
 #[cfg(test)]
 mod tests {
     use super::{acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app};
+    use safe_core::ipc::req::IpcReq;
+    use safe_core::ipc::Permission;
+    use std::collections::{BTreeSet, HashMap};
 
     // The app auth request strings encode the following app info:
     /*
@@ -755,6 +758,66 @@ mod tests {
     }
 
     #[test]
+    fn deny_authorisation_reqs_tests() {
+        let my_secret = &(random_str());
+        let my_password = &(random_str());
+
+        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+
+        // verify app info passed to allow/deny callback for auth requests, and verify the AuthDenied response
+        let auth_denied_encoded_response = "bAEAAAABU6IEAEAAAAAAACAAAAAAAAAAAAE";
+        let auth_response = authorise_app(&auth, APP_AUTH_REQ, &|auth_req| {
+            let (app_exchange_info, containers) = match auth_req {
+                IpcReq::Auth(app_auth_req) => {
+                    assert_eq!(app_auth_req.app_container, false);
+                    (app_auth_req.app, app_auth_req.containers)
+                }
+                _ => panic!("Auth req info not received"),
+            };
+            assert_eq!(app_exchange_info.id, APP_ID);
+            assert_eq!(app_exchange_info.name, "Rust Authenticator CLI Test");
+            assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
+            let mut perms = BTreeSet::new();
+            perms.insert(Permission::Read);
+            let mut conts = HashMap::new();
+            conts.insert("_public".to_string(), perms);
+            assert_eq!(containers, conts);
+            false
+        });
+        match auth_response {
+            Ok(res) => assert_eq!(res, auth_denied_encoded_response),
+            Err(_) => panic!("It should have returned an AuthDenied response rather than erroing"),
+        };
+
+        authorise_app(&auth, APP_AUTH_REQ, &|_| true).expect("Failed to authorise an app");
+        let auth_denied_encoded_response = "bAEAAAAA633HNCAAAAAAACAAAAAAAAAAAAE";
+        let auth_response = authorise_app(&auth, CONT_AUTH_REQ, &|authed_apps_res| {
+            let (app_exchange_info, containers) = match authed_apps_res {
+                IpcReq::Containers(cont_req) => (cont_req.app, cont_req.containers),
+                _ => panic!("Containers auth req info not received"),
+            };
+
+            assert_eq!(app_exchange_info.id, APP_ID);
+            assert_eq!(app_exchange_info.name, "Rust Authenticator CLI Test");
+            assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
+
+            let mut music_perms = BTreeSet::new();
+            music_perms.insert(Permission::Insert);
+            music_perms.insert(Permission::Update);
+
+            let mut cont_perms = HashMap::new();
+            cont_perms.insert("_music".to_string(), music_perms);
+            assert_eq!(containers, cont_perms);
+
+            false
+        });
+        match auth_response {
+            Ok(res) => assert_eq!(res, auth_denied_encoded_response),
+            Err(_) => panic!("It should have returned an AuthDenied response rather than erroing"),
+        }
+    }
+
+    #[test]
     fn acc_info_tests() {
         let my_secret = &(random_str());
         let my_password = &(random_str());
@@ -774,9 +837,6 @@ mod tests {
 
     #[test]
     fn authed_apps_tests() {
-        use safe_core::ipc::Permission;
-        use std::collections::BTreeSet;
-
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
