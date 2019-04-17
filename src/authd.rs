@@ -6,9 +6,9 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use super::{authorise_app, create_acc, log_in, AuthAllowPrompt};
 use actix_web::{actix::*, http::Method, server, ws, App, Error, HttpRequest, HttpResponse, Path};
 use log::debug;
+use safe_auth::{authorise_app, create_acc, log_in, AuthAllowPrompt};
 use safe_authenticator::{AuthError, Authenticator};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};

@@ -6,8 +6,6 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-pub mod authd;
-
 use log::{debug, info};
 use safe_authenticator::app_auth::authenticate;
 use safe_authenticator::config;

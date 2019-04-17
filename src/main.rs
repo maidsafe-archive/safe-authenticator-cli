@@ -6,6 +6,9 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
+mod authd;
+mod cli_helpers;
+
 use env_logger;
 use log::{debug, error};
 #[macro_use]
