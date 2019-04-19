@@ -6,17 +6,18 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-mod authd;
-mod cli_helpers;
-
-use env_logger;
-use log::{debug, error};
 #[macro_use]
 extern crate prettytable;
+#[macro_use]
+extern crate unwrap;
 
+mod authd;
 mod cli;
+mod cli_helpers;
 
 use cli::run;
+use env_logger;
+use log::{debug, error};
 use std::process;
 
 fn main() {
