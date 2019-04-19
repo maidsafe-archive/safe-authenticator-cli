@@ -32,19 +32,16 @@ pub struct LoginDetails {
 }
 
 pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, String> {
-    let mut the_secret: String = String::from("");
-    let mut the_password: String = String::from("");
-
     let environment_details = unwrap!(envy::from_env::<Environment>());
 
-    if let Some(safe_auth_secret) = environment_details.safe_auth_secret {
-        the_secret = safe_auth_secret;
-        info!("Using secret from provided ENV var: safe_auth_secret")
+    let mut the_secret = environment_details.safe_auth_secret.unwrap_or(String::from(""));
+    if !the_secret.is_empty() {
+        info!("Using secret from provided ENV var: SAFE_AUTH_SECRET")
     }
 
-    if let Some(safe_auth_password) = environment_details.safe_auth_password {
-        the_password = safe_auth_password;
-        info!("Using password from provided ENV var: safe_auth_password")
+    let mut the_password = environment_details.safe_auth_password.unwrap_or(String::from(""));
+    if !the_password.is_empty() {
+        info!("Using password from provided ENV var: SAFE_AUTH_PASSWORD")
     }
 
     if the_secret.is_empty() ^ the_password.is_empty() {
