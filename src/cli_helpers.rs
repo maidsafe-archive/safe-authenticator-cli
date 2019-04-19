@@ -6,20 +6,18 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use log::info;
-use prettytable::Table;
-
-use routing::Action;
-use safe_auth::AuthedAppsList;
-use safe_core::ipc::req::IpcReq;
+extern crate envy;
 extern crate serde;
 extern crate serde_json;
 
+use log::info;
+use prettytable::Table;
+use routing::Action;
+use safe_auth::AuthedAppsList;
+use safe_core::ipc::req::IpcReq;
+use serde::Deserialize;
 use std::fs;
 use std::io::{stdin, stdout, Write};
-
-use serde::Deserialize;
-extern crate envy;
 
 #[derive(Deserialize, Debug)]
 struct Environment {
@@ -37,7 +35,7 @@ pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, S
     let mut the_secret: String = String::from("");
     let mut the_password: String = String::from("");
 
-    let environment_details = envy::from_env::<Environment>().unwrap();
+    let environment_details = unwrap!(envy::from_env::<Environment>());
 
     if let Some(safe_auth_secret) = environment_details.safe_auth_secret {
         the_secret = safe_auth_secret;
@@ -62,7 +60,7 @@ pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, S
                 }
             };
 
-            let json: serde_json::Value = serde_json::from_reader(file).unwrap();
+            let json: serde_json::Value = unwrap!(serde_json::from_reader(file));
 
             eprintln!("Warning! Storing your secret/password in plaintext in a config file is not secure." );
 
@@ -79,8 +77,8 @@ pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, S
             }
         } else {
             // Prompt the user for the SAFE account credentials
-            the_secret = rpassword::read_password_from_tty(Some("Secret: ")).unwrap();
-            the_password = rpassword::read_password_from_tty(Some("Password: ")).unwrap();
+            the_secret = unwrap!(rpassword::read_password_from_tty(Some("Secret: ")));
+            the_password = unwrap!(rpassword::read_password_from_tty(Some("Password: ")));
         }
     }
 

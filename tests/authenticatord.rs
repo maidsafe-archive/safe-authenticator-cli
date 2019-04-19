@@ -13,11 +13,27 @@ use rand::Rng;
 use std::process::{Child, Command};
 use std::{thread, time};
 
+static AUTHED_REQ: &str = "bAAAAAABU6IEAEAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAADQAAAAAAAAAAC7OB2WE3DJMMAQAAAAAAAAAAAAAAAAAAI";
+
 fn init_server(port: u16) -> Child {
+    let rand_string: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .collect();
+
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
+
     let child = cmd
-        .arg("--daemon")
-        .arg(format!("{}", port))
+        .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
+        .env("SAFE_AUTH_SECRET", &rand_string)
+        .env("SAFE_AUTH_PASSWORD", "password")
+        .args(vec![
+            "--allow-all-auth",
+            "--daemon",
+            &port.to_string(),
+            "--invite-token",
+            &rand_string,
+        ])
         .spawn()
         .expect("Authenticator process failed to start");
     child
@@ -79,7 +95,7 @@ fn curl_login() {
         port, &rand_string, &rand_string
     );
     let mut cmd = Command::new("curl");
-    cmd.args(&vec!["-X", "POST", &endpoint])
+    cmd.args(&vec!["-X", "GET", &endpoint])
         .assert()
         .stdout(predicate::str::contains("Logged in to SAFE network"))
         .success();
@@ -87,32 +103,15 @@ fn curl_login() {
 }
 
 #[test]
-#[ignore]
 fn curl_authorise() {
     let mut rng = rand::thread_rng();
     let port: u16 = rng.gen();
     let mut server_process = init_server(port);
     let duration = time::Duration::from_secs(1);
     thread::sleep(duration);
-    let rand_string: String = rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .collect();
 
-    let mut endpoint = format!(
-        "http://localhost:{}/create/{}/{}/{}",
-        port, &rand_string, &rand_string, &rand_string
-    );
+    let endpoint = format!("http://localhost:{}/authorise/{}", port, AUTHED_REQ);
     let mut cmd = Command::new("curl");
-    let mut child = cmd
-        .args(&vec!["-X", "POST", &endpoint])
-        .spawn()
-        .expect("Failed to start");
-    child.wait().expect("failed to wait");
-    thread::sleep(duration);
-
-    endpoint = format!("http://localhost:{}/authorise/bAAAAAACTBZGGMAAAAAABGAAAAAAAAAAANB2W45DFOIXGYZLTORSXELRUHAXDGOAACYAAAAAAAAAAAR3VNFWGM33SMQQEQ5LOORSXEICMMVZXIZLSCEAAAAAAAAAAATLBNFSFGYLGMUXG4ZLUEBGHIZBOAEBAAAAAAAAAAAAHAAAAAAAAAAAF64DVMJWGSYYFAAAAAAAAAAAAAAAAAAAQAAAAAIAAAAADAAAAABAAAAAAYAAAAAAAAAAAL5YHKYTMNFRU4YLNMVZQKAAAAAAAAAAAAAAAAAABAAAAAAQAAAAAGAAAAACAAAAAAE", port);
-    let mut cmd = Command::new("curl");
-    cmd.args(&vec!["-X", "POST", &endpoint]).assert().success();
+    cmd.args(&vec!["-X", "GET", &endpoint]).assert().success();
     server_process.kill().expect("Process was not running");
 }

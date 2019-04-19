@@ -6,18 +6,19 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use log::{debug, info};
-use safe_authenticator::app_auth::authenticate;
-use safe_authenticator::config;
-use safe_authenticator::test_utils::{run as utils_run, try_run};
-use safe_authenticator::Authenticator;
+#[macro_use]
+extern crate unwrap;
 
 use futures::{stream, Future, Stream};
+use log::{debug, info};
+use maidsafe_utilities::serialisation::deserialise;
 use routing::{ClientError, User};
-use safe_authenticator::access_container;
-use safe_authenticator::errors::AuthError;
 use safe_authenticator::ipc::{decode_ipc_msg, update_container_perms};
 use safe_authenticator::revocation::revoke_app as safe_authenticator_revoke_app;
+use safe_authenticator::{
+    access_container, app_auth::authenticate, config, errors::AuthError, run as auth_run_helper,
+    Authenticator,
+};
 use safe_core::client::Client;
 use safe_core::ipc::req::{
     AppExchangeInfo, AuthReq, ContainerPermissions, ContainersReq, IpcReq, ShareMDataReq,
@@ -26,8 +27,6 @@ use safe_core::ipc::resp::{AccessContainerEntry, IpcResp};
 use safe_core::ipc::{access_container_enc_key, decode_msg, encode_msg, IpcError, IpcMsg};
 use safe_core::utils::symmetric_decrypt;
 use safe_core::{client as safe_core_client, CoreError};
-
-use maidsafe_utilities::serialisation::deserialise;
 
 #[cfg(test)]
 #[macro_use]
@@ -204,7 +203,10 @@ pub fn authorise_app(
     };
     debug!("Auth request string decoded: {:?}", req_msg);
 
-    let ipc_req = utils_run(authenticator, move |client| decode_ipc_msg(client, req_msg));
+    let ipc_req = unwrap!(auth_run_helper(
+        authenticator,
+        move |client| decode_ipc_msg(client, req_msg)
+    ));
     match ipc_req {
         Ok(IpcMsg::Req {
             req: IpcReq::Auth(app_auth_req),
@@ -308,9 +310,9 @@ pub fn authorise_app(
 ///```
 pub fn acc_info(authenticator: &Authenticator) -> Result<(u64, u64), String> {
     debug!("Attempting to get account info...");
-    let acc_info = utils_run(authenticator, move |client| {
-        client.get_account_info().map_err(AuthError::from)
-    });
+    let acc_info = unwrap!(auth_run_helper(authenticator, move |client| client
+        .get_account_info()
+        .map_err(AuthError::from)));
     debug!("Account's info obtained: {:?}", acc_info);
 
     Ok((acc_info.mutations_done, acc_info.mutations_available))
@@ -346,7 +348,7 @@ pub fn acc_info(authenticator: &Authenticator) -> Result<(u64, u64), String> {
 ///```
 pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>, String> {
     debug!("Attempting to fetch list of authorised apps...");
-    let authed_apps = utils_run(authenticator, move |client| {
+    let authed_apps = unwrap!(auth_run_helper(authenticator, move |client| {
         let c2 = client.clone();
         let c3 = client.clone();
         config::list_apps(client)
@@ -391,7 +393,7 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
                 Ok(apps)
             })
             .map_err(AuthError::from)
-    });
+    }));
 
     Ok(authed_apps)
 }
@@ -426,8 +428,7 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
 /// ```
 ///
 /// ## Error Example
-/// // TODO: utils_run panics in this secenario. Remove the use of this utils.
-/// ```ignore
+/// ```
 /// # use safe_auth::{create_acc, authorise_app};
 /// use safe_auth::{log_in, revoke_app};
 /// # fn random_str() -> String { (0..4).map(|_| rand::random::<char>()).collect() }
@@ -447,26 +448,22 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
 /// }
 ///```
 pub fn revoke_app(authenticator: &Authenticator, app_id: String) -> Result<(), String> {
-    utils_run(authenticator, move |client| {
-        safe_authenticator_revoke_app(client, &app_id)
-            .and_then(move |_| {
-                debug!("Application sucessfully revoked: {}", app_id);
-                Ok(())
-            })
-            .map_err(AuthError::from)
-    });
-
-    Ok(())
+    auth_run_helper(authenticator, move |client| {
+        safe_authenticator_revoke_app(client, &app_id).and_then(move |_| {
+            debug!("Application sucessfully revoked: {}", app_id);
+            Ok(())
+        })
+    })
+    .map_err(|err| format!("Failed to revoke permissions: {}", err))
 }
 
 // Helper function to generate an app authorisation response
 fn gen_auth_denied_response(req_id: u32) -> Result<String, String> {
     debug!("Encoding auth denied response...");
-    let resp = encode_msg(&IpcMsg::Resp {
+    let resp = unwrap!(encode_msg(&IpcMsg::Resp {
         req_id,
         resp: IpcResp::Auth(Err(IpcError::AuthDenied)),
-    })
-    .unwrap();
+    }));
     debug!("Returning auth response generated: {:?}", resp);
 
     Ok(resp)
@@ -478,15 +475,15 @@ fn gen_auth_response(
     req_id: u32,
     auth_req: AuthReq,
 ) -> Result<String, String> {
-    let auth_granted =
-        try_run(authenticator, move |client| authenticate(client, auth_req)).unwrap();
+    let auth_granted = unwrap!(auth_run_helper(authenticator, move |client| authenticate(
+        client, auth_req
+    )));
 
     debug!("Encoding response... {:?}", auth_granted);
-    let resp = encode_msg(&IpcMsg::Resp {
+    let resp = unwrap!(encode_msg(&IpcMsg::Resp {
         req_id,
         resp: IpcResp::Auth(Ok(auth_granted)),
-    })
-    .unwrap();
+    }));
     debug!("Returning auth response generated: {:?}", resp);
 
     Ok(resp)
@@ -501,7 +498,7 @@ fn gen_cont_auth_response(
     let permissions = cont_req.containers.clone();
     let app_id = cont_req.app.id.clone();
 
-    try_run(authenticator, move |client| {
+    auth_run_helper(authenticator, move |client| {
         let c2 = client.clone();
         let c3 = client.clone();
         let c4 = client.clone();
@@ -557,14 +554,13 @@ fn gen_cont_auth_response(
 
 // Helper function to generate an unregistered authorisation response
 fn gen_unreg_auth_response(req_id: u32) -> Result<String, String> {
-    let bootstrap_cfg = safe_core_client::bootstrap_config().unwrap();
+    let bootstrap_cfg = unwrap!(safe_core_client::bootstrap_config());
 
     debug!("Encoding response... {:?}", bootstrap_cfg);
-    let resp = encode_msg(&IpcMsg::Resp {
+    let resp = unwrap!(encode_msg(&IpcMsg::Resp {
         req_id,
         resp: IpcResp::Unregistered(Ok(bootstrap_cfg)),
-    })
-    .unwrap();
+    }));
 
     debug!("Returning unregistered auth response generated: {:?}", resp);
     Ok(resp)
@@ -576,7 +572,7 @@ fn gen_shared_md_auth_response(
     req_id: u32,
     share_mdata_req: ShareMDataReq,
 ) -> Result<String, String> {
-    try_run(authenticator, move |client| {
+    auth_run_helper(authenticator, move |client| {
         let client_cloned0 = client.clone();
         let client_cloned1 = client.clone();
         config::get_app(client, &share_mdata_req.app.id).and_then(move |app_info| {
@@ -688,7 +684,7 @@ mod tests {
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
 
         // fail to authorise app with invalid request
         let invalid_auth_req = "fddfds";
@@ -760,7 +756,7 @@ mod tests {
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
 
         // verify app info passed to allow/deny callback for auth requests, and verify the AuthDenied response
         let auth_denied_encoded_response = "bAEAAAABU6IEAEAAAAAAACAAAAAAAAAAAAE";
@@ -820,7 +816,7 @@ mod tests {
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
 
         // verify the PUTs consumed in creating an account by fetching the account info
         let acc_info = acc_info(&auth);
@@ -838,7 +834,7 @@ mod tests {
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
 
         // list of authorised apps shall be empty with a freshly created account
         let authed_apps_res = authed_apps(&auth);
@@ -901,7 +897,7 @@ mod tests {
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = create_acc("anInvite", my_secret, my_password).unwrap();
+        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
 
         // after revoking an app it is removed from the list retrieved by authed_apps
         authorise_app(&auth, APP_AUTH_REQ, &|_| true)

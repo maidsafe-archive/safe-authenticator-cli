@@ -34,16 +34,14 @@ pub fn run(
     let address = format!("127.0.0.1:{}", *port);
     println!("Exposing service on {}", &address);
 
-    server::new(move || {
-        create_web_service(AuthenticatorState {
-            handle: handle.clone(),
-            allow_auth_cb: Arc::new(prompt_to_allow),
-        })
-        .finish()
+    let server = unwrap!(server::new(move || create_web_service(AuthenticatorState {
+        handle: handle.clone(),
+        allow_auth_cb: Arc::new(prompt_to_allow),
     })
-    .bind(&address)
-    .unwrap()
-    .run();
+    .finish())
+    .bind(&address));
+
+    server.run();
 }
 
 fn create_web_service(state: AuthenticatorState) -> App<AuthenticatorState> {
@@ -134,12 +132,12 @@ fn authd_create_acc(
 ) -> HttpResponse {
     match create_acc(&info.2.clone(), &info.0.clone(), &info.1.clone()) {
         Ok(auth) => {
-            *(req.state().handle.lock().unwrap()) = Some(Ok(auth));
+            *(unwrap!(req.state().handle.lock())) = Some(Ok(auth));
             HttpResponse::Ok().body("Account created and logged in to SAFE Network.")
         }
         Err(auth_error) => {
             let response_string = format!("Failed to create account: {}", &auth_error);
-            *(req.state().handle.lock().unwrap()) = Some(Err(AuthError::from(auth_error)));
+            *(unwrap!(req.state().handle.lock())) = Some(Err(AuthError::from(auth_error)));
             HttpResponse::BadRequest().body(response_string)
         }
     }
@@ -149,12 +147,12 @@ fn authd_create_acc(
 fn authd_login(info: Path<(String, String)>, req: HttpRequest<AuthenticatorState>) -> HttpResponse {
     match log_in(&info.0.clone(), &info.1.clone()) {
         Ok(auth) => {
-            *(req.state().handle.lock().unwrap()) = Some(Ok(auth));
+            *(unwrap!(req.state().handle.lock())) = Some(Ok(auth));
             HttpResponse::Ok().body("Logged in to SAFE Network.")
         }
         Err(auth_error) => {
             let response_string = format!("Login failed: {} ", &auth_error);
-            *(req.state().handle.lock().unwrap()) = Some(Err(AuthError::from(auth_error)));
+            *(unwrap!(req.state().handle.lock())) = Some(Err(AuthError::from(auth_error)));
             HttpResponse::BadRequest().body(response_string)
         }
     }
@@ -165,7 +163,7 @@ fn authd_authorise(
     http_req: HttpRequest<AuthenticatorState>,
 ) -> HttpResponse {
     let authenticator: &Option<Result<Authenticator, AuthError>> =
-        &*(http_req.state().handle.lock().unwrap());
+        &*(unwrap!(http_req.state().handle.lock()));
     let allow: &'static AuthAllowPrompt = *(http_req.state().allow_auth_cb);
     match authenticator {
         Some(Ok(auth_handle)) => {
@@ -210,8 +208,8 @@ mod tests {
     #[test]
     fn get_index() {
         let mut srv = create_test_service(None);
-        let request = srv.client(Method::GET, "/").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let request = unwrap!(srv.client(Method::GET, "/").finish());
+        let response = unwrap!(srv.execute(request.send()));
 
         assert!(response.status().is_success());
     }
@@ -226,7 +224,7 @@ mod tests {
         let mut srv = create_test_service(None);
 
         let endpoint = format!("/create/{}/{}/{}", secret, password, invite);
-        let request = srv.client(Method::POST, &endpoint).finish().unwrap();
+        let request = unwrap!(srv.client(Method::POST, &endpoint).finish());
         match srv.execute(request.send()) {
             Ok(response) => {
                 assert!(response.status().is_success());
@@ -246,10 +244,7 @@ mod tests {
         let invite: u16 = rng.gen();
         let mut srv = create_test_service(None);
         let create_acc_endpoint = format!("/create/{}/{}/{}", secret, password, invite);
-        let create_acc_request = srv
-            .client(Method::POST, &create_acc_endpoint)
-            .finish()
-            .unwrap();
+        let create_acc_request = unwrap!(srv.client(Method::POST, &create_acc_endpoint).finish());
         match srv.execute(create_acc_request.send()) {
             Ok(response) => {
                 assert!(response.status().is_success());
@@ -260,7 +255,7 @@ mod tests {
         }
 
         let login_endpoint = format!("/login/{}/{}", secret, password);
-        let login_request = srv.client(Method::POST, &login_endpoint).finish().unwrap();
+        let login_request = unwrap!(srv.client(Method::POST, &login_endpoint).finish());
 
         match srv.execute(login_request.send()) {
             Ok(response) => {
@@ -280,15 +275,15 @@ mod tests {
         let invite = &(random_str());
         let secret = &(random_str());
         let password = &(random_str());
-        let authenticator = create_acc(invite, secret, password).unwrap();
+        let authenticator = unwrap!(create_acc(invite, secret, password));
         let mut srv = create_test_service(Some(authenticator));
         let endpoint = "/authorise/bAAAAAACTBZGGMAAAAAABGAAAAAAAAAAANB2W45DFOIXGYZLTORSXELRUHAXDGOAACYAAAAAAAAAAAR3VNFWGM33SMQQEQ5LOORSXEICMMVZXIZLSCEAAAAAAAAAAATLBNFSFGYLGMUXG4ZLUEBGHIZBOAEBAAAAAAAAAAAAHAAAAAAAAAAAF64DVMJWGSYYFAAAAAAAAAAAAAAAAAAAQAAAAAIAAAAADAAAAABAAAAAAYAAAAAAAAAAAL5YHKYTMNFRU4YLNMVZQKAAAAAAAAAAAAAAAAAABAAAAAAQAAAAAGAAAAACAAAAAAE";
-        let request = srv.client(Method::GET, &endpoint).finish().unwrap();
+        let request = unwrap!(srv.client(Method::GET, &endpoint).finish());
         match srv.execute(request.send()) {
             Ok(response) => {
                 assert!(response.status().is_success());
-                let bytes = srv.execute(response.body()).unwrap();
-                let body = from_utf8(&bytes).unwrap();
+                let bytes = unwrap!(srv.execute(response.body()));
+                let body = unwrap!(from_utf8(&bytes));
                 assert!(body.len() > 0);
             }
             Err(req_err) => {
@@ -300,10 +295,10 @@ mod tests {
     #[test]
     fn get_web_socket() {
         let mut srv = create_test_service(None);
-        let (reader, mut writer) = srv.ws_at("/ws").unwrap();
+        let (reader, mut writer) = unwrap!(srv.ws_at("/ws"));
         writer.text("text");
 
-        let (item, _reader) = srv.execute(reader.into_future()).unwrap();
+        let (item, _reader) = unwrap!(srv.execute(reader.into_future()));
         assert_eq!(item, Some(ws::Message::Text("text".to_owned())));
     }
 }
