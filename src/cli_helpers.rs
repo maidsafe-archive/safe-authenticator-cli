@@ -98,8 +98,8 @@ pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, S
 
 pub fn pretty_print_authed_apps(authed_apps: Vec<AuthedAppsList>) {
     let mut table = Table::new();
-    table.add_row(row!["Authorised Applications"]);
-    table.add_row(row!["Id", "Name", "Vendor", "Permissions"]);
+    table.add_row(row![bFg->"Authorised Applications"]);
+    table.add_row(row![bFg->"Id", bFg->"Name", bFg->"Vendor", bFg->"Permissions"]);
 
     let all_app_iterator = authed_apps.iter();
     for app_info in all_app_iterator {
@@ -149,7 +149,7 @@ pub fn prompt_to_allow_auth(req: IpcReq) -> bool {
         IpcReq::Auth(app_auth_req) => {
             println!("The following application authorisation request was received:");
             let mut table = Table::new();
-            table.add_row(row!["Id", "Name", "Vendor", "Permissions requested"]);
+            table.add_row(row![bFg->"Id", bFg->"Name", bFg->"Vendor", bFg->"Permissions requested"]);
             table.add_row(row![
                 app_auth_req.app.id,
                 app_auth_req.app.name,
@@ -166,7 +166,7 @@ pub fn prompt_to_allow_auth(req: IpcReq) -> bool {
             println!("The following authorisation request for containers was received:");
             println!("{:?}", cont_req);
             let mut table = Table::new();
-            table.add_row(row!["Id", "Name", "Vendor", "Permissions requested"]);
+            table.add_row(row![bFg->"Id", bFg->"Name", bFg->"Vendor", bFg->"Permissions requested"]);
             table.add_row(row![
                 cont_req.app.id,
                 cont_req.app.name,
@@ -216,10 +216,10 @@ pub fn prompt_to_allow_auth(req: IpcReq) -> bool {
             }
             let mut table = Table::new();
             table.add_row(row![
-                "Id",
-                "Name",
-                "Vendor",
-                "MutableData's requested to share"
+                bFg->"Id",
+                bFg->"Name",
+                bFg->"Vendor",
+                bFg->"MutableData's requested to share"
             ]);
             table.add_row(row![
                 share_mdata_req.app.id,
