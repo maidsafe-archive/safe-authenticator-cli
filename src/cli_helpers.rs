@@ -34,12 +34,16 @@ pub struct LoginDetails {
 pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, String> {
     let environment_details = unwrap!(envy::from_env::<Environment>());
 
-    let mut the_secret = environment_details.safe_auth_secret.unwrap_or(String::from(""));
+    let mut the_secret = environment_details
+        .safe_auth_secret
+        .unwrap_or(String::from(""));
     if !the_secret.is_empty() {
         info!("Using secret from provided ENV var: SAFE_AUTH_SECRET")
     }
 
-    let mut the_password = environment_details.safe_auth_password.unwrap_or(String::from(""));
+    let mut the_password = environment_details
+        .safe_auth_password
+        .unwrap_or(String::from(""));
     if !the_password.is_empty() {
         info!("Using password from provided ENV var: SAFE_AUTH_PASSWORD")
     }
@@ -146,7 +150,8 @@ pub fn prompt_to_allow_auth(req: IpcReq) -> bool {
         IpcReq::Auth(app_auth_req) => {
             println!("The following application authorisation request was received:");
             let mut table = Table::new();
-            table.add_row(row![bFg->"Id", bFg->"Name", bFg->"Vendor", bFg->"Permissions requested"]);
+            table
+                .add_row(row![bFg->"Id", bFg->"Name", bFg->"Vendor", bFg->"Permissions requested"]);
             table.add_row(row![
                 app_auth_req.app.id,
                 app_auth_req.app.name,
@@ -163,7 +168,8 @@ pub fn prompt_to_allow_auth(req: IpcReq) -> bool {
             println!("The following authorisation request for containers was received:");
             println!("{:?}", cont_req);
             let mut table = Table::new();
-            table.add_row(row![bFg->"Id", bFg->"Name", bFg->"Vendor", bFg->"Permissions requested"]);
+            table
+                .add_row(row![bFg->"Id", bFg->"Name", bFg->"Vendor", bFg->"Permissions requested"]);
             table.add_row(row![
                 cont_req.app.id,
                 cont_req.app.name,
