@@ -9,10 +9,15 @@
 use crate::authd;
 use crate::cli_helpers::*;
 
-use log::warn;
+use config_file_handler;
+use log::{debug, warn};
 use safe_auth::{acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app};
 use safe_authenticator::Authenticator;
+use std::env;
 use structopt::StructOpt;
+
+const DEFAULT_SEARCH_PATH: &str = "resources/";
+const CRUST_CONFIG_PATH_ENV_VAR: &str = "SAFE_CRUST_CONFIG_PATH";
 
 #[derive(StructOpt, Debug)]
 /// Manage SAFE Network authorisations and accounts.
@@ -52,6 +57,18 @@ pub fn run() -> Result<(), String> {
     let args = CmdArgs::from_args();
 
     let login_details = get_login_details(&args.config_file_str)?;
+
+    // We accept an additional search path for the crust config from an env var,
+    // or we add "/resources" as additional search path by default
+    let crust_config_path = match env::var(CRUST_CONFIG_PATH_ENV_VAR) {
+        Ok(val) => val,
+        Err(_) => String::from(DEFAULT_SEARCH_PATH),
+    };
+    debug!(
+        "Additional search path set for crust config file: {}",
+        crust_config_path
+    );
+    config_file_handler::set_additional_search_path(&crust_config_path);
 
     // If an invite token is provided, create a SAFE account, otherwise
     // just login. In both cases we use the instantiated authenticator

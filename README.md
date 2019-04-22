@@ -25,29 +25,28 @@ $ cd safe-authenticator-cli
 $ cargo build
 ```
 
-## Using the real network instead of Mock
+## Using the Mock or Non-Mock SAFE Network
 
-By default, the `safe_auth` CLI is built with [Mock libraries](https://github.com/maidsafe/safe_client_libs/wiki/Mock-vs.-non-mock#mock-libraries). If you are intending to use it with the real network, e.g. the available `Alpha-2` network, you'll need to copy the `resources/safe_auth.crust.config` file onto the `target` folder, and disable the default features, with the following commands:
+By default, the `safe_auth` CLI is built with [Non-Mock libraries](https://github.com/maidsafe/safe_client_libs/wiki/Mock-vs.-non-mock). If you are intending to use it with the `Mock` network you'll need to specify the `mock-network` feature in every command you run with `cargo`, e.g. to build it for the `Mock` network you can run:
 ```
-$ cp resources/safe_auth.crust.config target/debug/
-$ cargo build --no-default-features
+$ cargo build --features mock-network
 ```
 
-Likewise, keep in mind that when running the safe_auth CLI with `cargo run` as explained in the following sections below, please also make sure you disable the default features if you want to use the real network, e.g. with the following command the `safe_auth` will try to connect and login to the `Alpha-2` network:
+Keep in mind that when running the safe_auth CLI with `cargo run` as explained in the following sections below, please also make sure to set the `mock-network` feature if you want to use the Mock network, e.g. with the following command the `safe_auth` will try to connect and login to the Mock network:
 ```
-$ cargo run --no-default-features
+$ cargo run --features mock-network
 ```
 
 ## Run tests
 
 You can run all existing tests with:
 ```
-$ cargo test
+$ cargo test --features mock-network
 ```
 
 The `safe_auth` internal functions have some documentation written as [doc tests](https://doc.rust-lang.org/rustdoc/documentation-tests.html). You can run these specific tests with the following command:
 ```
-$ cargo test --doc
+$ cargo test --doc --features mock-network
 ```
 
 ## Using the CLI
