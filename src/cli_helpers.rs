@@ -25,7 +25,7 @@ struct Environment {
     safe_auth_password: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
 pub struct LoginDetails {
     pub secret: String,
     pub password: String,
@@ -61,20 +61,20 @@ pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, S
                 }
             };
 
-            let json: serde_json::Value = unwrap!(serde_json::from_reader(file));
+            let json: LoginDetails = unwrap!(serde_json::from_reader(file));
 
             eprintln!("Warning! Storing your secret/password in plaintext in a config file is not secure." );
 
-            if let Some(secret) = json.get("secret") {
-                the_secret = secret.to_string();
-            } else {
+            if json.secret.is_empty() {
                 return Err("The config files's secret field cannot be empty".to_string());
+            } else {
+                the_secret = json.secret;
             }
 
-            if let Some(password) = json.get("password") {
-                the_password = password.to_string();
-            } else {
+            if json.password.is_empty() {
                 return Err("The config files's password field cannot be empty".to_string());
+            } else {
+                the_password = json.password;
             }
         } else {
             // Prompt the user for the SAFE account credentials
