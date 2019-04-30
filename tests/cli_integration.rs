@@ -6,15 +6,18 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
+extern crate serde_json;
+
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use std::fs;
+use std::io::Write;
 use std::process::Command;
 
-extern crate serde_json;
-
 static PRETTY_ACCOUNT_CREATION_RESPONSE: &str = "Account was created successfully!\n";
+static PRETTY_LOGIN_RESPONSE: &str = "Logged in the SAFE Network successfully!\n";
 static UNAUTHED_REQ: &str = "bAAAAAADNVCMIGAQAAAACQAAAAAAAAAAANZSXILTNMFUWI43BMZSS4YLQNFPXA3DBPFTXE33VNZSC453FMJRWY2LFNZ2C4MJQAE";
 static UNAUTHED_RESPONSE: &str = "bAEAAAADNVCMIGAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC\n"; // \n added to string with println!
 
@@ -124,5 +127,33 @@ fn calling_safe_auth_with_registered_req() {
         ])
         .assert()
         .stdout(predicate::str::starts_with(AUTHED_RESPONSE_START).from_utf8())
+        .success();
+}
+
+#[test]
+fn create_acc_with_env_vars_log_in_with_config() {
+    let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+
+    // write the credentials onto a json config file
+    let login_credentials = format!(
+        "{{ \"secret\": \"{}\", \"password\": \"{}\"}}",
+        rand_string, rand_string
+    );
+    let mut file = fs::File::create(&CONFIG_FILE).unwrap();
+    file.write(login_credentials.as_bytes()).unwrap();
+
+    // we create an account with these credentials
+    let mut cmd = Command::cargo_bin("safe_auth").unwrap();
+    cmd.env("SAFE_AUTH_SECRET", rand_string.clone())
+        .env("SAFE_AUTH_PASSWORD", rand_string.clone())
+        .args(&vec!["--invite-token", "aaaa"])
+        .assert()
+        .success();
+
+    // and now verify it can log in if reading the same credentials from the config
+    let mut cmd = Command::cargo_bin("safe_auth").unwrap();
+    cmd.args(&vec!["--pretty", "--config", &CONFIG_FILE])
+        .assert()
+        .stdout(predicate::str::starts_with(PRETTY_LOGIN_RESPONSE).from_utf8())
         .success();
 }
