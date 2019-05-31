@@ -457,7 +457,7 @@ pub fn revoke_app(authenticator: &Authenticator, app_id: String) -> Result<(), S
     .map_err(|err| format!("Failed to revoke permissions: {}", err))
 }
 
-// Helper function to generate an app authorisation response
+// Helper function to generate an app authorisation response when it was denied
 fn gen_auth_denied_response(req_id: u32) -> Result<String, String> {
     debug!("Encoding auth denied response...");
     let resp = unwrap!(encode_msg(&IpcMsg::Resp {
@@ -469,24 +469,40 @@ fn gen_auth_denied_response(req_id: u32) -> Result<String, String> {
     Ok(resp)
 }
 
+// Helper function to generate an app authorisation response when there was an error
+fn gen_auth_err_response(req_id: u32, err: IpcError) -> String {
+    debug!("Encoding auth error response...");
+    let resp = unwrap!(encode_msg(&IpcMsg::Resp {
+        req_id,
+        resp: IpcResp::Auth(Err(err)),
+    }));
+    info!("Returning auth error response generated: {:?}", resp);
+
+    resp
+}
+
 // Helper function to generate an app authorisation response
 fn gen_auth_response(
     authenticator: &Authenticator,
     req_id: u32,
     auth_req: AuthReq,
 ) -> Result<String, String> {
-    let auth_granted = unwrap!(auth_run_helper(authenticator, move |client| authenticate(
-        client, auth_req
-    )));
+    auth_run_helper(authenticator, move |client| {
+        authenticate(client, auth_req).and_then(move |auth_granted| {
+            debug!("Encoding response... {:?}", auth_granted);
+            let resp = unwrap!(encode_msg(&IpcMsg::Resp {
+                req_id,
+                resp: IpcResp::Auth(Ok(auth_granted)),
+            }));
+            debug!("Returning auth response generated: {:?}", resp);
 
-    debug!("Encoding response... {:?}", auth_granted);
-    let resp = unwrap!(encode_msg(&IpcMsg::Resp {
-        req_id,
-        resp: IpcResp::Auth(Ok(auth_granted)),
-    }));
-    debug!("Returning auth response generated: {:?}", resp);
-
-    Ok(resp)
+            Ok(resp)
+        })
+    })
+    .map_err(|err| {
+        debug!("Failed to generate response: {}", err);
+        gen_auth_err_response(req_id, err.into())
+    })
 }
 
 // Helper function to generate a containers authorisation response
@@ -697,6 +713,15 @@ mod tests {
             ),
         }
 
+        // fail to authorise app with invalid request due to inexisting container in the list of requested perms
+        let invalid_app_auth_req = "bAAAAAAF5Q66DAAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAAEAAAAAAAAAAAC7NFXHMYLMNFSACAAAAAAAAAAAAAAAAAAB";
+        let invalid_app_auth_response = "bAEAAAAF5Q66DAAAAAAAACAAAAAFAAAAADMAAAAAAAAAAATTPKN2WG2CDN5XHIYLJNZSXEKBCL5UW45TBNRUWIIRJAE";
+        let auth_response = authorise_app(&auth, invalid_app_auth_req, &|_| true);
+        match auth_response {
+            Ok(_) => panic!("It should have failed to authorise app request"),
+            Err(err) => assert_eq!(err, invalid_app_auth_response),
+        }
+
         // successfully authorise a registered app auth request
         let auth_response = authorise_app(&auth, APP_AUTH_REQ, &|_| true);
         match auth_response {
@@ -706,7 +731,7 @@ mod tests {
 
         // successfully authorise an unregistered app auth request
         let unreg_auth_req =
-            "bAAAAAAFVMRTRUAQAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAI";
+                            "bAAAAAAFVMRTRUAQAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAI";
         let unreg_auth_res = "bAEAAAAFVMRTRUAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC";
         let auth_response = authorise_app(&auth, unreg_auth_req, &|_| true);
         match auth_response {
@@ -726,9 +751,9 @@ mod tests {
         let shared_md_auth_req = "bAAAAAAHI4K23GAYAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAAMEPAAAAAAAAAAVAYFZ5TT47GQRNWBSQUD6FQVU7BOKP24TNSYPGFEOGCHFIV5ULTAEAQAAAAAE";
         let auth_response = authorise_app(&auth, shared_md_auth_req, &|_| true);
         match auth_response {
-            Ok(_) => panic!("It should have failed to authorise to share MD"),
-            Err(err) => assert_eq!(err, "Failed to generate response: Core error: Routing client error -> Requested data not found"),
-        }
+                            Ok(_) => panic!("It should have failed to authorise to share MD"),
+                            Err(err) => assert_eq!(err, "Failed to generate response: Core error: Routing client error -> Requested data not found"),
+                        }
 
         // fail to authorise containers request for an inexisting container
         let invalid_cont_auth_req = "bAAAAAACATC2HMAIAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAABAAAAAAAAAAAAX3JNZ3GC3DJMQBAAAAAAAAAAAABAAAAAAQAAAAAC";
@@ -740,15 +765,6 @@ mod tests {
                 "Failed to generate response: \'_invalid\' not found in the access container"
             ),
         }
-
-        // fail to authorise app with invalid request due to inexisting container in the list of requested perms
-        /* TODO: this doesn't fail as it was expected
-        let invalid_app_auth_req = "bAAAAAAF5Q66DAAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAAEAAAAAAAAAAAC7NFXHMYLMNFSACAAAAAAAAAAAAAAAAAAB";
-        let auth_response = authorise_app(&auth, invalid_app_auth_req, &|_| true);
-        match auth_response {
-            Ok(_) => panic!("It should have failed to authorise app request"),
-            Err(err) => assert_eq!(err, "Failed to generate response: \'_invalid_container\' not found in the access container"),
-        }*/
     }
 
     #[test]

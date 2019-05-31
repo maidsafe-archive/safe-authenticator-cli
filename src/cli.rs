@@ -47,7 +47,7 @@ pub struct CmdArgs {
     #[structopt(short = "d", long = "daemon")]
     port: Option<u16>,
     /// Flag to automatically allow any authorisation request received,
-    /// otherwise the user is a prompted to allow each request individually
+    /// otherwise the user is prompted to allow each request individually
     #[structopt(long = "allow-all-auth")]
     allow_all: bool,
 }
@@ -59,7 +59,7 @@ pub fn run() -> Result<(), String> {
     let login_details = get_login_details(&args.config_file_str)?;
 
     // We accept an additional search path for the crust config from an env var,
-    // or we add "/resources" as additional search path by default
+    // or we add "resources/" as additional search path by default
     let crust_config_path = match env::var(CRUST_CONFIG_PATH_ENV_VAR) {
         Ok(val) => val,
         Err(_) => String::from(DEFAULT_SEARCH_PATH),
@@ -90,7 +90,7 @@ pub fn run() -> Result<(), String> {
         warn!("All authorisation requests will be automatically allowed!");
     };
 
-    // Authorise the application if a auth req string was provided
+    // Authorise the application if an auth req string was provided
     if let Some(req) = &args.req_str {
         let auth_response = if args.allow_all {
             authorise_app(&authenticator, &req, &|_| true)?
