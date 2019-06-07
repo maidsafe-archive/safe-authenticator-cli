@@ -169,7 +169,10 @@ fn authd_authorise(
         Some(Ok(auth_handle)) => {
             let response = authorise_app(auth_handle, &authenticator_req, allow);
             match response {
-                Ok(resp) => HttpResponse::Ok().body(resp),
+                Ok(resp) => {
+                    println!("Authorisation response sent");
+                    HttpResponse::Ok().body(resp)
+                }
                 Err(err) => HttpResponse::BadRequest().body(err),
             }
         }

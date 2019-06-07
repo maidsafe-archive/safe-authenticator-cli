@@ -16,10 +16,13 @@ log = "0.4.6"
 rpassword = "3.0.1"
 structopt = "0.2.14"
 env_logger = "0.6.0"
-safe_authenticator = "0.9.1"
-safe_core = "0.32.1"
-routing = "0.37.0"
-maidsafe_utilities = "0.17.0"
+safe_authenticator = { git = "https://github.com/bochaco/safe_client_libs", branch = "temp" }
+#safe_authenticator = "0.9.1"
+safe_core = { git = "https://github.com/bochaco/safe_client_libs", branch = "temp" }
+#safe_core = "0.32.1"
+routing = { git = "https://github.com/lionel1704/routing", branch = "patch" }
+#routing = "0.37.0"
+maidsafe_utilities = "0.18.0"
 futures = "0.1.25"
 rand = "0.6.5"
 prettytable-rs = "^0.8"
@@ -32,13 +35,12 @@ unwrap = "~1.2.0"
 config_file_handler = "~0.11.0"
 
 [features]
-mock-network = ["safe_authenticator/use-mock-routing"]
+mock-network = ["safe_authenticator/mock-network"]
 
 [patch.crates-io]
-safe_authenticator = { git = "https://github.com/bochaco/safe_client_libs", branch = "safe_authenticator-master-upgrades" }
-safe_core = { git = "https://github.com/bochaco/safe_client_libs", branch = "safe_authenticator-master-upgrades" }
-routing = { git = "https://github.com/hunterlester/routing", branch = "0.37.0-upgrades" }
-maidsafe_utilities = { git = "https://github.com/hunterlester/maidsafe_utilities", branch = "0.17.0-upgrades" }
+#safe_authenticator = { git = "https://github.com/bochaco/safe_client_libs", branch = "safe_authenticator-master-upgrades" }
+#safe_core = { git = "https://github.com/bochaco/safe_client_libs", branch = "safe_authenticator-master-upgrades" }
+#routing = { git = "https://github.com/hunterlester/routing", branch = "0.37.0-upgrades" }
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"
