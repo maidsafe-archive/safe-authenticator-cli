@@ -707,7 +707,7 @@ mod tests {
         // successfully authorise an unregistered app auth request
         let unreg_auth_req =
             "bAAAAAAFVMRTRUAQAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAI";
-        let unreg_auth_res = "bAEAAAAFVMRTRUAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC";
+        let unreg_auth_res = "bAEAAAAFVMRTRUAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI";
         let auth_response = authorise_app(&auth, unreg_auth_req, &|_| true);
         match auth_response {
             Ok(res) => assert_eq!(res, unreg_auth_res),
