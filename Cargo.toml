@@ -16,11 +16,12 @@ log = "0.4.6"
 rpassword = "3.0.1"
 structopt = "0.2.14"
 env_logger = "0.6.0"
-safe_authenticator = { git = "https://github.com/bochaco/safe_client_libs", branch = "temp" }
+safe_authenticator = { git = "https://github.com/bochaco/safe_client_libs", branch = "temp-experimental" }
+safe-nd = { git = "https://github.com/maidsafe/safe-nd" }
 #safe_authenticator = "0.9.1"
-safe_core = { git = "https://github.com/bochaco/safe_client_libs", branch = "temp" }
+safe_core = { git = "https://github.com/bochaco/safe_client_libs", branch = "temp-experimental" }
 #safe_core = "0.32.1"
-routing = { git = "https://github.com/lionel1704/routing", branch = "patch" }
+routing = { package = "mock_routing", git = "https://github.com/bochaco/safe_client_libs", branch = "temp-experimental" }
 #routing = "0.37.0"
 maidsafe_utilities = "0.18.0"
 futures = "0.1.25"
