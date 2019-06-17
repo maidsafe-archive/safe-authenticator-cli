@@ -183,11 +183,7 @@ pub fn prompt_to_allow_auth(req: IpcReq) -> bool {
             println!("The following authorisation request to share a MutableData was received:");
             let mut row = String::from("");
             for mdata in share_mdata_req.mdata.iter() {
-                row += &format!(
-                    "Type tag: {}\nXoR name: {}",
-                    mdata.type_tag,
-                    mdata.name.to_hex()
-                );
+                row += &format!("Type tag: {}\nXoR name: {:?}", mdata.type_tag, mdata.name);
                 let insert_perm = if mdata.perms.is_allowed(Action::Insert).unwrap_or(false) {
                     " Insert"
                 } else {
