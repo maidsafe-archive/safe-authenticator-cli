@@ -160,7 +160,7 @@ pub fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
 /// # let my_secret = &(random_str());
 /// # let my_password = &(random_str());
 /// # create_acc("anInvite", my_secret, my_password).unwrap();
-/// let auth_req = "bAAAAAAFBMHKYWAAAAAABWAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C453FMJQXA4BONFSAACYAAAAAAAAAABLWKYSBOBYCAVDFON2A2AAAAAAAAAAAJVQWSZCTMFTGKICMORSC4AACAAAAAAAAAAAAUAAAAAAAAAAAL5SG6Y3VNVSW45DTAEAAAAAAAAAAAAIAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
+/// let auth_req = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
 /// let authenticator = log_in(my_secret, my_password).unwrap();
 /// let auth_response = authorise_app(&authenticator, auth_req, &|_| true);
 /// match auth_response {
@@ -338,7 +338,7 @@ pub fn acc_info(authenticator: &Authenticator) -> Result<(u64, u64), String> {
 /// # let my_password = &(random_str());
 /// # create_acc("anInvite", my_secret, my_password).unwrap();
 /// let authenticator = log_in(my_secret, my_password).unwrap();
-/// # let auth_req = "bAAAAAAFBMHKYWAAAAAABWAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C453FMJQXA4BONFSAACYAAAAAAAAAABLWKYSBOBYCAVDFON2A2AAAAAAAAAAAJVQWSZCTMFTGKICMORSC4AACAAAAAAAAAAAAUAAAAAAAAAAAL5SG6Y3VNVSW45DTAEAAAAAAAAAAAAIAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
+/// # let auth_req = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
 /// # authorise_app(&authenticator, auth_req, &|_| true).unwrap();
 /// /// Get the list of authorised apps
 /// let authed_apps = authed_apps(&authenticator);
@@ -418,10 +418,10 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
 /// # let my_password = &(random_str());
 /// # create_acc("anInvite", my_secret, my_password).unwrap();
 /// let authenticator = log_in(my_secret, my_password).unwrap();
-/// # let auth_req = "bAAAAAAFBMHKYWAAAAAABWAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C453FMJQXA4BONFSAACYAAAAAAAAAABLWKYSBOBYCAVDFON2A2AAAAAAAAAAAJVQWSZCTMFTGKICMORSC4AACAAAAAAAAAAAAUAAAAAAAAAAAL5SG6Y3VNVSW45DTAEAAAAAAAAAAAAIAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
+/// # let auth_req = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
 /// # authorise_app(&authenticator, auth_req, &|_| true).unwrap();
-/// /// Revoke all permissions from app with ID `net.maidsafe.test.webapp.id`
-/// let revoked = revoke_app(&authenticator, String::from("net.maidsafe.test.webapp.id"));
+/// /// Revoke all permissions from app with ID `net.maidsafe.cli`
+/// let revoked = revoke_app(&authenticator, String::from("net.maidsafe.cli"));
 /// match revoked {
 ///    Ok(_) => assert!(true), // This should pass
 ///    Err(_) => assert!(false)
@@ -622,16 +622,17 @@ mod tests {
 
     // The app auth request strings encode the following app info:
     /*
-        id: 'net.maidsafe.test.authenticator.cli.id',
-        name: 'Rust Authenticator CLI Test',
+        id: 'net.maidsafe.cli',
+        name: 'SAFE CLI',
         vendor: 'MaidSafe.net Ltd'
     */
     // perms: [ ("_public", {Read} ) ]
-    static APP_AUTH_REQ: &str = "bAAAAAABU6IEAEAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAADQAAAAAAAAAAC7OB2WE3DJMMAQAAAAAAAAAAAAAAAAAAI";
+    static APP_AUTH_REQ: &str = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
     // perms: [ ("_public", {Read} ), ("_music", {Insert, Update}) ]
-    static CONT_AUTH_REQ: &str = "bAAAAAAA633HNCAIAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAAAYAAAAAAAAAAAX3NOVZWSYYCAAAAAAAAAAAACAAAAABAAAAAAE";
+    static CONT_AUTH_REQ: &str = "bAAAAAADLZ663OAIAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAEAAAAAAAAAAAAYAAAAAAAAAAAX3NOVZWSYYCAAAAAAAAAAAACAAAAABAAAAAA4AAAAAAAAAAAX3QOVRGY2LDAEAAAAAAAAAAAAAAAAAAC";
 
-    static APP_ID: &str = "net.maidsafe.test.authenticator.cli.id";
+    static APP_NAME: &str = "SAFE CLI";
+    static APP_ID: &str = "net.maidsafe.cli";
 
     fn random_str() -> String {
         (0..4).map(|_| rand::random::<char>()).collect()
@@ -708,7 +709,7 @@ mod tests {
         // successfully authorise an unregistered app auth request
         let unreg_auth_req =
             "bAAAAAAFVMRTRUAQAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAI";
-        let unreg_auth_res = "bAEAAAAFVMRTRUAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI";
+        let unreg_auth_res = "bAEAAAAFVMRTRUAQAAAAAAAAAAAAAAAAAAAAAAAAB";
         let auth_response = authorise_app(&auth, unreg_auth_req, &|_| true);
         match auth_response {
             Ok(res) => assert_eq!(res, unreg_auth_res),
@@ -716,7 +717,7 @@ mod tests {
         }
 
         // successfully authorise containers request
-        let cont_auth_res = "bAEAAAAA633HNCAIAAAAAAAAAAAAQ";
+        let cont_auth_res = "bAEAAAADLZ663OAIAAAAAAAAAAAAQ";
         let auth_response = authorise_app(&auth, CONT_AUTH_REQ, &|_| true);
         match auth_response {
             Ok(res) => assert_eq!(res, cont_auth_res),
@@ -724,7 +725,7 @@ mod tests {
         }
 
         // fail to authorise share MD request for an inexisting MD
-        let shared_md_auth_req = "bAAAAAAHI4K23GAYAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAAMEPAAAAAAAAAAVAYFZ5TT47GQRNWBSQUD6FQVU7BOKP24TNSYPGFEOGCHFIV5ULTAEAQAAAAAE";
+        let shared_md_auth_req = "bAAAAAAEVVMUYEAYAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAACATQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB";
         let auth_response = authorise_app(&auth, shared_md_auth_req, &|_| true);
         match auth_response {
             Ok(_) => panic!("It should have failed to authorise to share MD"),
@@ -732,7 +733,7 @@ mod tests {
         }
 
         // fail to authorise containers request for an inexisting container
-        let invalid_cont_auth_req = "bAAAAAACATC2HMAIAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAABAAAAAAAAAAAAX3JNZ3GC3DJMQBAAAAAAAAAAAABAAAAAAQAAAAAC";
+        let invalid_cont_auth_req = "bAAAAAAC7WYYRCAIAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAABAAAAAAAAAAAAX3JNZ3GC3DJMQBAAAAAAAAAAAABAAAAAAQAAAAAC";
         let auth_response = authorise_app(&auth, invalid_cont_auth_req, &|_| true);
         match auth_response {
             Ok(_) => panic!("It should have failed to authorise invalid container request"),
@@ -760,7 +761,7 @@ mod tests {
         let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
 
         // verify app info passed to allow/deny callback for auth requests, and verify the AuthDenied response
-        let auth_denied_encoded_response = "bAEAAAABU6IEAEAAAAAAACAAAAAAAAAAAAE";
+        let auth_denied_encoded_response = "bAEAAAAEXVK4SGAAAAAAACAAAAAAAAAAAAE";
         let auth_response = authorise_app(&auth, APP_AUTH_REQ, &|auth_req| {
             let (app_exchange_info, containers) = match auth_req {
                 IpcReq::Auth(app_auth_req) => {
@@ -770,7 +771,7 @@ mod tests {
                 _ => panic!("Auth req info not received"),
             };
             assert_eq!(app_exchange_info.id, APP_ID);
-            assert_eq!(app_exchange_info.name, "Rust Authenticator CLI Test");
+            assert_eq!(app_exchange_info.name, APP_NAME);
             assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
             let mut perms = BTreeSet::new();
             perms.insert(Permission::Read);
@@ -785,7 +786,7 @@ mod tests {
         };
 
         authorise_app(&auth, APP_AUTH_REQ, &|_| true).expect("Failed to authorise an app");
-        let auth_denied_encoded_response = "bAEAAAAA633HNCAAAAAAACAAAAAAAAAAAAE";
+        let auth_denied_encoded_response = "bAEAAAADLZ663OAAAAAAACAAAAAAAAAAAAE";
         let auth_response = authorise_app(&auth, CONT_AUTH_REQ, &|authed_apps_res| {
             let (app_exchange_info, containers) = match authed_apps_res {
                 IpcReq::Containers(cont_req) => (cont_req.app, cont_req.containers),
@@ -793,22 +794,29 @@ mod tests {
             };
 
             assert_eq!(app_exchange_info.id, APP_ID);
-            assert_eq!(app_exchange_info.name, "Rust Authenticator CLI Test");
+            assert_eq!(app_exchange_info.name, APP_NAME);
             assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
 
             let mut music_perms = BTreeSet::new();
             music_perms.insert(Permission::Insert);
             music_perms.insert(Permission::Update);
 
+            let mut public_perms = BTreeSet::new();
+            public_perms.insert(Permission::Read);
+
             let mut cont_perms = HashMap::new();
             cont_perms.insert("_music".to_string(), music_perms);
+            cont_perms.insert("_public".to_string(), public_perms);
             assert_eq!(containers, cont_perms);
 
             false
         });
         match auth_response {
             Ok(res) => assert_eq!(res, auth_denied_encoded_response),
-            Err(_) => panic!("It should have returned an AuthDenied response rather than erroing"),
+            Err(err) => panic!(
+                "It should have returned an AuthDenied response rather than erroing: {:?}",
+                err
+            ),
         }
     }
 
@@ -853,7 +861,7 @@ mod tests {
                 assert_eq!(authed_vec.len(), 1);
                 let app_exchange_info = &authed_vec[0].app;
                 assert_eq!(app_exchange_info.id, APP_ID);
-                assert_eq!(app_exchange_info.name, "Rust Authenticator CLI Test");
+                assert_eq!(app_exchange_info.name, APP_NAME);
                 assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
                 let mut perms = BTreeSet::new();
                 perms.insert(Permission::Read);
@@ -871,7 +879,7 @@ mod tests {
                 assert_eq!(authed_vec.len(), 1);
                 let app_exchange_info = &authed_vec[0].app;
                 assert_eq!(app_exchange_info.id, APP_ID);
-                assert_eq!(app_exchange_info.name, "Rust Authenticator CLI Test");
+                assert_eq!(app_exchange_info.name, APP_NAME);
                 assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
 
                 let mut public_perms = BTreeSet::new();
