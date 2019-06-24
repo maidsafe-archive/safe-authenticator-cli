@@ -10,7 +10,7 @@ This crate implements a CLI (Command Line Interface) for the [safe_authenticator
 
 The [SAFE Browser](https://github.com/maidsafe/safe_browser) provides an integrated Authenticator GUI for users to create SAFE Network accounts, log in using an existing account's credentials (secret and password), authorise applications which need to store data on the network on behalf of the user, see current account's PUT balance, as well as revoke permissions previously granted to applications.
 
-However, there are some scenarios where having to launch the browser just to be able to have the authenticator running is not that practical. E.g., developers working on a desktop SAFE application, either during development, testing, or even debugging phase, may find it uncomfortable or overkilling if all they need it's just the app's credentials to connect to the SAFE Network to test the main logic of such application, and perhaps not the authorisation flow. In these scenarios having a CLI is much more flexible and easy to use as its output could also be chained with other commands, and/or applications can simply execute the CLI and read the result from its `stdout` instead of having to interface with the SAFE Browser/Authenticator through the system URI protocol.
+However, there are some scenarios where having to launch the browser just to be able to have the authenticator running is not that practical. E.g., developers working on a desktop SAFE application, either during development, testing, or even debugging phase, may find it uncomfortable or overkill if all they need is just the apps credentials to connect to the SAFE Network to test the main logic of such application, and perhaps not the authorisation flow. In these scenarios having a CLI is much more flexible and easy to use as its output could also be chained with other commands and/or applications can simply execute the CLI and read the result from its `stdout` instead of having to interface with the SAFE Browser/Authenticator through the system URI protocol.
 
 Simply put, this tool provides an alternative to the Authenticator that is currently integrated in the SAFE Browser, and to its communication protocol, allowing to perform the same set of operations but through a command line user interface.
 
@@ -55,14 +55,14 @@ The `safe_auth` can be executed with:
 1. `cargo run -- <list of arguments/options>`
 2. or directly with the executable generated: `./target/debug/safe_auth <list of arguments/options>`
 
-As any other CLI, the `safe_auth` supports the `--help` argument which outputs a help message with information of the supported arguments and options, you can get this help message with:
+As any other CLI, the `safe_auth` supports the `--help` argument which outputs a help message with information on the supported arguments and options, you can get this help message with:
 ```
 $ cargo run -- --help
 ```
 
 The `safe_auth` output can be of two different formats:
-1. the default one that can be used by any other applications by parsing the output string obtained from the `stdout`
-2. or a nicer output which is intended for human users of the tool that can be enabled with the use of the `--pretty` argument. We are using this argument in all the examples of this guide.
+1. The default one that can be used by any other applications by parsing the output string obtained from the `stdout`
+2. A more verbose output which is intended for human users of the tool that can be enabled with the use of the `--pretty` argument. We are using this argument in all the examples of this guide.
 
 Apart from the output generated in the `stdout`, the `safe_auth` tool also generates logs at different levels like any other Rust application. These logs levels (`debug`, `info`, etc.) can be set by setting the `RUST_LOG` environment variable, e.g. to set `info` level:
 ```
@@ -110,25 +110,25 @@ Logged in the SAFE Network successfully!
 ```
 
 
-#### Using Environmental Variables
+#### Using Environment Variables
 
-Another method for passing secret/password involves using the environmental variables `SAFE_AUTH_SECRET` and `SAFE_AUTH_PASSWORD`.
+Another method for passing secret/password involves using the environment variables `SAFE_AUTH_SECRET` and `SAFE_AUTH_PASSWORD`.
 
-With those set (eg, on linux/osx: `export SAFE_AUTH_SECRET="<you secret>;"`, and `export SAFE_AUTH_PASSWORD="<you password>"`), you can then login without needing to enter login details, or pass a config file:
+With those set (eg, on linux/osx: `export SAFE_AUTH_SECRET="<your secret>;"`, and `export SAFE_AUTH_PASSWORD="<your password>"`), you can then login without needing to enter login details, or pass a config file:
 
 ```
 $ cargo run -- --pretty
 Logged in the SAFE Network successfully!
 ```
 
-Or, you can choose to pass the env vars to the command directly (though this can be insecure):
+Or, you can choose to pass the environment variables to the command directly (though this can be insecure):
 
 ```
 $ SAFE_AUTH_SECRET="<secret>" SAFE_AUTH_PASSWORD="<password>" cargo run -- --pretty
 Logged in the SAFE Network successfully!
 ```
 
-Do note, that _both_ the secret and password environment variables must be set to use this method. If only one is set, an error will be thrown.
+Please note, that _both_ the secret and password environment variables must be set to use this method. If only one is set, an error will be thrown.
 
 ### Authorising an application
 ```
@@ -148,12 +148,12 @@ Authorisation will be allowed...
 Authorisation response string: <auth response>
 ```
 
-As you can see beafore each authorisation request is allowed, the user is prompted for confirm. Optionally, this prompt can be disabled to have the `safe_auth` to automatically allow all incoming authorisation requests. We can do this by passing the `--allow-all-auth` argument in the command line:
+As you can see before each authorisation request is allowed, the user is prompted for confirmation. Optionally, this prompt can be disabled to have the `safe_auth` to automatically allow all incoming authorisation requests. We can do this by passing the `--allow-all-auth` argument in the command line:
 ```
 $ cargo run -- --pretty --allow-all-auth --req <auth req string>
 ```
 
-As an example, the following command passes a valid encoded authorisation request as the value of the `--req` argument and it allows the autorisation to be made without prompting:
+For example, the following command passes a valid encoded authorisation request as the value of the `--req` argument and it allows the authorisation to be made without prompting:
 ```
 $ cargo run -- --pretty --allow-all-auth --req bAAAAAABU6IEAEAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAADQAAAAAAAAAAC7OB2WE3DJMMAQAAAAAAAAAAAAAAAAAAI
 ```
