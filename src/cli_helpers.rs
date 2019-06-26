@@ -36,14 +36,14 @@ pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, S
 
     let mut the_secret = environment_details
         .safe_auth_secret
-        .unwrap_or(String::from(""));
+        .unwrap_or_else(|| String::from(""));
     if !the_secret.is_empty() {
         info!("Using secret from provided ENV var: SAFE_AUTH_SECRET")
     }
 
     let mut the_password = environment_details
         .safe_auth_password
-        .unwrap_or(String::from(""));
+        .unwrap_or_else(|| String::from(""));
     if !the_password.is_empty() {
         info!("Using password from provided ENV var: SAFE_AUTH_PASSWORD")
     }
@@ -61,7 +61,12 @@ pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, S
                 }
             };
 
-            let json: LoginDetails = unwrap!(serde_json::from_reader(file));
+            let json: LoginDetails = serde_json::from_reader(file).map_err(|err| {
+                format!(
+                    "Format of the config file is not valid and couldn't be parsed: {}",
+                    err
+                )
+            })?;
 
             eprintln!("Warning! Storing your secret/password in plaintext in a config file is not secure." );
 
@@ -78,8 +83,10 @@ pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, S
             }
         } else {
             // Prompt the user for the SAFE account credentials
-            the_secret = unwrap!(rpassword::read_password_from_tty(Some("Secret: ")));
-            the_password = unwrap!(rpassword::read_password_from_tty(Some("Password: ")));
+            the_secret = rpassword::read_password_from_tty(Some("Secret: "))
+                .map_err(|err| format!("Failed reading 'secret' string from input: {}", err))?;
+            the_password = rpassword::read_password_from_tty(Some("Password: "))
+                .map_err(|err| format!("Failed reading 'secret' string from input: {}", err))?;
         }
     }
 
