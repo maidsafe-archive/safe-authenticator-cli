@@ -6,17 +6,10 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use actix_web::{actix::*, http::Method, server, ws, App, Error, HttpRequest, HttpResponse, Path};
-use log::debug;
+use actix_web::{web, App, HttpResponse, HttpServer};
 use safe_auth::{authorise_app, create_acc, log_in, AuthAllowPrompt};
 use safe_authenticator::{AuthError, Authenticator};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-
-// How often heartbeat pings are sent
-const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
-// How long before lack of client response causes a timeout
-const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
 type SharedHandleType = Arc<Mutex<Option<Result<Authenticator, AuthError>>>>;
 
@@ -32,30 +25,28 @@ pub fn run(
 
     let port: Arc<u16> = Arc::new(port_arg);
     let address = format!("127.0.0.1:{}", *port);
+
     println!("Exposing service on {}", &address);
-
-    let server = unwrap!(server::new(move || create_web_service(AuthenticatorState {
-        handle: handle.clone(),
-        allow_auth_cb: Arc::new(prompt_to_allow),
+    let _ = HttpServer::new(move || {
+        App::new()
+            .data(AuthenticatorState {
+                handle: handle.clone(),
+                allow_auth_cb: Arc::new(prompt_to_allow),
+            })
+            .route(
+                "/",
+                web::get().to(|| {
+                    HttpResponse::Ok().body("SAFE Authenticator service is up and running!")
+                }),
+            )
+            .route("/authorise/{auth_req}", web::get().to(authd_authorise))
+            .default_service(
+                web::get().to(|| HttpResponse::NotFound().body("Service endpoint not found.")),
+            )
     })
-    .finish())
-    .bind(&address));
-
-    server.run();
-}
-
-fn create_web_service(state: AuthenticatorState) -> App<AuthenticatorState> {
-    App::with_state(state)
-        .resource("/", |r| {
-            r.method(Method::GET).f(|_| HttpResponse::Ok());
-        })
-        .resource("/authorise/{auth_req}", |r| {
-            r.method(Method::GET).with(authd_authorise);
-        })
-        .resource("/ws", |r| {
-            r.method(Method::GET).with(authd_web_socket);
-        })
-        .default_resource(|r| r.f(|_| HttpResponse::NotFound().body("Service endpoint not found.")))
+    .bind(&address)
+    .unwrap()
+    .run();
 }
 
 struct AuthenticatorState {
@@ -63,108 +54,49 @@ struct AuthenticatorState {
     pub allow_auth_cb: Arc<&'static AuthAllowPrompt>,
 }
 
-struct WebSocket {
-    hb: Instant,
-}
-
-impl Actor for WebSocket {
-    type Context = ws::WebsocketContext<Self, AuthenticatorState>;
-
-    /// Method is called on actor start. We start the heartbeat process here.
-    fn started(&mut self, ctx: &mut Self::Context) {
-        self.hb(ctx);
-    }
-}
-
-/// Handler for `ws::Message`
-impl StreamHandler<ws::Message, ws::ProtocolError> for WebSocket {
-    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
-        // process websocket messages
-        debug!("WebSocket message: {:?}", msg);
-        match msg {
-            ws::Message::Ping(msg) => {
-                self.hb = Instant::now();
-                ctx.pong(&msg);
-            }
-            ws::Message::Pong(_) => {
-                self.hb = Instant::now();
-            }
-            ws::Message::Text(text) => ctx.text(text),
-            ws::Message::Binary(bin) => ctx.binary(bin),
-            ws::Message::Close(_) => {
-                ctx.stop();
-            }
-        }
-    }
-}
-
-impl WebSocket {
-    fn new() -> Self {
-        Self { hb: Instant::now() }
-    }
-
-    /// helper method that sends ping to client every second.
-    ///
-    /// also this method checks heartbeats from client
-    fn hb(&self, ctx: &mut <Self as Actor>::Context) {
-        ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
-            // check client heartbeats
-            if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
-                // heartbeat timed out
-                debug!("Websocket Client heartbeat failed, disconnecting!");
-
-                // stop actor
-                ctx.stop();
-
-                // don't try to send a ping
-                return;
-            }
-
-            ctx.ping("");
-        });
-    }
-}
-
 #[allow(dead_code)]
 fn authd_create_acc(
-    info: Path<(String, String, String)>,
-    req: HttpRequest<AuthenticatorState>,
+    info: web::Path<(String, String, String)>,
+    req: web::Data<AuthenticatorState>,
 ) -> HttpResponse {
     match create_acc(&info.2.clone(), &info.0.clone(), &info.1.clone()) {
         Ok(auth) => {
-            *(unwrap!(req.state().handle.lock())) = Some(Ok(auth));
+            *(unwrap!(req.handle.lock())) = Some(Ok(auth));
             HttpResponse::Ok().body("Account created and logged in to SAFE Network.")
         }
         Err(auth_error) => {
             let response_string = format!("Failed to create account: {}", &auth_error);
-            *(unwrap!(req.state().handle.lock())) = Some(Err(AuthError::from(auth_error)));
+            *(unwrap!(req.handle.lock())) = Some(Err(AuthError::from(auth_error)));
             HttpResponse::BadRequest().body(response_string)
         }
     }
 }
 
 #[allow(dead_code)]
-fn authd_login(info: Path<(String, String)>, req: HttpRequest<AuthenticatorState>) -> HttpResponse {
+fn authd_login(
+    info: web::Path<(String, String)>,
+    req: web::Data<AuthenticatorState>,
+) -> HttpResponse {
     match log_in(&info.0.clone(), &info.1.clone()) {
         Ok(auth) => {
-            *(unwrap!(req.state().handle.lock())) = Some(Ok(auth));
+            *(unwrap!(req.handle.lock())) = Some(Ok(auth));
             HttpResponse::Ok().body("Logged in to SAFE Network.")
         }
         Err(auth_error) => {
             let response_string = format!("Login failed: {} ", &auth_error);
-            *(unwrap!(req.state().handle.lock())) = Some(Err(AuthError::from(auth_error)));
+            *(unwrap!(req.handle.lock())) = Some(Err(AuthError::from(auth_error)));
             HttpResponse::BadRequest().body(response_string)
         }
     }
 }
 
 fn authd_authorise(
-    authenticator_req: Path<String>,
-    http_req: HttpRequest<AuthenticatorState>,
+    authenticator_req: web::Path<String>,
+    http_req: web::Data<AuthenticatorState>,
 ) -> HttpResponse {
     let authenticator: &Option<Result<Authenticator, AuthError>> =
-        &*(unwrap!(http_req.state().handle.lock()));
-    let allow: &'static AuthAllowPrompt = *(http_req.state().allow_auth_cb);
+        &*(unwrap!(http_req.handle.lock()));
+    let allow: &'static AuthAllowPrompt = *(http_req.allow_auth_cb);
     match authenticator {
         Some(Ok(auth_handle)) => {
             let response = authorise_app(auth_handle, &authenticator_req, allow);
@@ -179,10 +111,6 @@ fn authd_authorise(
         Some(Err(auth_error)) => HttpResponse::BadRequest().body(format!("{}", auth_error)),
         None => HttpResponse::BadRequest().body("Authenticator is not logged in."),
     }
-}
-
-fn authd_web_socket(req: HttpRequest<AuthenticatorState>) -> Result<HttpResponse, Error> {
-    ws::start(&req, WebSocket::new())
 }
 
 #[cfg(test)]
