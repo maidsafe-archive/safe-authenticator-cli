@@ -9,8 +9,7 @@ publish = false
 edition = "2018"
 
 [dependencies]
-actix = "0.7.9"
-actix-web = "0.7.18"
+actix-web = "~1.0.5"
 assert_cmd = "0.11.0"
 log = "0.4.6"
 rpassword = "3.0.1"
@@ -39,6 +38,7 @@ mock-network = ["safe_authenticator/mock-network"]
 #safe_authenticator = { git = "https://github.com/bochaco/safe_client_libs", branch = "safe_authenticator-master-upgrades" }
 #safe_core = { git = "https://github.com/bochaco/safe_client_libs", branch = "safe_authenticator-master-upgrades" }
 #routing = { git = "https://github.com/hunterlester/routing", branch = "0.37.0-upgrades" }
+lazy_static = { git = "https://github.com/rust-lang-nursery/lazy-static.rs.git", tag = "1.3.0" }
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"
