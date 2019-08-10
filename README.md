@@ -77,7 +77,7 @@ Now let's look at some of the features and operations supported, how they can be
 
 ### Create a SAFE Network account
 ```
-$ cargo run -- --pretty --invite-token <token>
+$ cargo run -- --pretty --sk <secret key hex string>
 Secret:
 Password:
 Account was created successfully!

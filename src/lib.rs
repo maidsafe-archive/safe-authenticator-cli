@@ -12,7 +12,7 @@ extern crate unwrap;
 use futures::{stream, Future, Stream};
 use log::{debug, info};
 use maidsafe_utilities::serialisation::deserialise;
-use routing::{ClientError, User};
+use routing::ClientError;
 use safe_authenticator::ipc::{decode_ipc_msg, update_container_perms};
 use safe_authenticator::revocation::revoke_app as safe_authenticator_revoke_app;
 use safe_authenticator::{
@@ -27,7 +27,8 @@ use safe_core::ipc::resp::{AccessContainerEntry, IpcResp};
 use safe_core::ipc::{access_container_enc_key, decode_msg, encode_msg, IpcError, IpcMsg};
 use safe_core::utils::symmetric_decrypt;
 use safe_core::{client as safe_core_client, CoreError};
-use safe_nd::PublicKey;
+use safe_nd::{MDataAddress, PublicKey};
+use threshold_crypto::SecretKey;
 
 #[cfg(test)]
 #[macro_use]
@@ -60,7 +61,8 @@ pub type AuthAllowPrompt = Fn(IpcReq) -> bool + std::marker::Send + std::marker:
 ///     let my_password = "mypassword";
 /// #   let my_secret = &(random_str());
 /// #   let my_password = &(random_str());
-///     let auth = create_acc("anInvite", my_secret, my_password)?;
+/// #   let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
+///     let auth = create_acc(sk, my_secret, my_password)?;
 /// #   Ok(())
 /// # }
 ///```
@@ -76,8 +78,9 @@ pub type AuthAllowPrompt = Fn(IpcReq) -> bool + std::marker::Send + std::marker:
 /// let my_password = "mypassword";
 /// # let my_secret = &(random_str());
 /// # let my_password = &(random_str());
-/// # create_acc("anInvite", my_secret, my_password).unwrap();
-/// let acc_not_created = create_acc("anInvite", my_secret, my_password);
+/// # let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
+/// # create_acc(sk, my_secret, my_password).unwrap();
+/// let acc_not_created = create_acc(sk, my_secret, my_password);
 /// match acc_not_created {
 ///    Ok(_) => assert!(false), // This should not pass
 ///    Err(message) => {
@@ -85,9 +88,10 @@ pub type AuthAllowPrompt = Fn(IpcReq) -> bool + std::marker::Send + std::marker:
 ///     }
 /// }
 ///```
-pub fn create_acc(invite: &str, secret: &str, password: &str) -> Result<Authenticator, String> {
+pub fn create_acc(sk: &str, secret: &str, password: &str) -> Result<Authenticator, String> {
     debug!("Attempting to create a SAFE account...");
-    match Authenticator::create_acc(secret, password, invite, || {
+    let secret_key = sk_from_hex(sk)?;
+    match Authenticator::create_acc(secret, password, secret_key, || {
         eprintln!("{}", "Disconnected from network");
     }) {
         Ok(auth) => {
@@ -113,7 +117,8 @@ pub fn create_acc(invite: &str, secret: &str, password: &str) -> Result<Authenti
 /// let my_password = "mypassword";
 /// # let my_secret = &(random_str());
 /// # let my_password = &(random_str());
-/// # create_acc("anInvite", my_secret, my_password).unwrap();
+/// # let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
+/// # create_acc(sk, my_secret, my_password).unwrap();
 /// let logged_in = log_in(my_secret, my_password);
 /// match logged_in {
 ///    Ok(_) => assert!(true), // This should pass
@@ -159,7 +164,8 @@ pub fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
 /// let my_password = "mypassword";
 /// # let my_secret = &(random_str());
 /// # let my_password = &(random_str());
-/// # create_acc("anInvite", my_secret, my_password).unwrap();
+/// # let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
+/// # create_acc(sk, my_secret, my_password).unwrap();
 /// let auth_req = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
 /// let authenticator = log_in(my_secret, my_password).unwrap();
 /// let auth_response = authorise_app(&authenticator, auth_req, &|_| true);
@@ -178,7 +184,8 @@ pub fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
 /// let my_password = "mypassword";
 /// # let my_secret = &(random_str());
 /// # let my_password = &(random_str());
-/// # create_acc("anInvite", my_secret, my_password).unwrap();
+/// # let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
+/// # create_acc(sk, my_secret, my_password).unwrap();
 /// /// Using an invalid auth request string
 /// let auth_req = "invalid-auth-req-string";
 /// let authenticator = log_in(my_secret, my_password).unwrap();
@@ -301,7 +308,8 @@ pub fn authorise_app(
 /// let my_password = "mypassword";
 /// # let my_secret = &(random_str());
 /// # let my_password = &(random_str());
-/// # create_acc("anInvite", my_secret, my_password).unwrap();
+/// # let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
+/// # create_acc(sk, my_secret, my_password).unwrap();
 /// let authenticator = log_in(my_secret, my_password).unwrap();
 /// let acc_info = acc_info(&authenticator);
 /// match acc_info {
@@ -309,14 +317,16 @@ pub fn authorise_app(
 ///    Err(_) => assert!(false)
 /// }
 ///```
-pub fn acc_info(authenticator: &Authenticator) -> Result<(u64, u64), String> {
+pub fn acc_info(_authenticator: &Authenticator) -> Result<(u64, u64), String> {
     debug!("Attempting to get account info...");
-    let acc_info = unwrap!(auth_run_helper(authenticator, move |client| client
+    // TODO: perhaps we need to now change this to return the balance of the account's default CoinBalance
+    /*let acc_info = unwrap!(auth_run_helper(authenticator, move |client| client
         .get_account_info()
         .map_err(AuthError::from)));
     debug!("Account's info obtained: {:?}", acc_info);
 
-    Ok((acc_info.mutations_done, acc_info.mutations_available))
+    Ok((acc_info.mutations_done, acc_info.mutations_available))*/
+    Ok((0, 0))
 }
 
 /// # Get the list of applications authorised by this account
@@ -336,7 +346,8 @@ pub fn acc_info(authenticator: &Authenticator) -> Result<(u64, u64), String> {
 /// let my_password = "mypassword";
 /// # let my_secret = &(random_str());
 /// # let my_password = &(random_str());
-/// # create_acc("anInvite", my_secret, my_password).unwrap();
+/// # let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
+/// # create_acc(sk, my_secret, my_password).unwrap();
 /// let authenticator = log_in(my_secret, my_password).unwrap();
 /// # let auth_req = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
 /// # authorise_app(&authenticator, auth_req, &|_| true).unwrap();
@@ -416,7 +427,8 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
 /// let my_password = "mypassword";
 /// # let my_secret = &(random_str());
 /// # let my_password = &(random_str());
-/// # create_acc("anInvite", my_secret, my_password).unwrap();
+/// # let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
+/// # create_acc(sk, my_secret, my_password).unwrap();
 /// let authenticator = log_in(my_secret, my_password).unwrap();
 /// # let auth_req = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
 /// # authorise_app(&authenticator, auth_req, &|_| true).unwrap();
@@ -439,7 +451,8 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
 /// let my_password = "mypassword";
 /// # let my_secret = &(random_str());
 /// # let my_password = &(random_str());
-/// # create_acc("anInvite", my_secret, my_password).unwrap();
+/// # let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
+/// # create_acc(sk, my_secret, my_password).unwrap();
 /// let authenticator = log_in(my_secret, my_password).unwrap();
 /// /// Try to revoke permissions with an incorrect app ID
 /// let revoked = revoke_app(&authenticator, String::from("invalid-app-id"));
@@ -577,7 +590,7 @@ fn gen_shared_md_auth_response(
         let client_cloned0 = client.clone();
         let client_cloned1 = client.clone();
         config::get_app(client, &share_mdata_req.app.id).and_then(move |app_info| {
-            let user = User::Key(PublicKey::from(app_info.keys.bls_pk));
+            let user = PublicKey::from(app_info.keys.bls_pk);
             let num_mdata = share_mdata_req.mdata.len();
             stream::iter_ok(share_mdata_req.mdata.into_iter())
                 .map(move |mdata| {
@@ -587,9 +600,12 @@ fn gen_shared_md_auth_response(
                 })
                 .buffer_unordered(num_mdata)
                 .map(move |(version, mdata)| {
-                    client_cloned1.set_mdata_user_permissions(
-                        mdata.name,
-                        mdata.type_tag,
+                    let address = MDataAddress::Seq {
+                        name: mdata.name,
+                        tag: mdata.type_tag,
+                    };
+                    client_cloned1.set_mdata_user_permissions_new(
+                        address,
                         user,
                         mdata.perms,
                         version + 1,
@@ -613,12 +629,45 @@ fn gen_shared_md_auth_response(
     .map_err(|err| format!("Failed to generate response: {}", err))
 }
 
+pub fn parse_hex(hex_str: &str) -> Vec<u8> {
+    let mut hex_bytes = hex_str
+        .as_bytes()
+        .iter()
+        .filter_map(|b| match b {
+            b'0'...b'9' => Some(b - b'0'),
+            b'a'...b'f' => Some(b - b'a' + 10),
+            b'A'...b'F' => Some(b - b'A' + 10),
+            _ => None,
+        })
+        .fuse();
+
+    let mut bytes = Vec::new();
+    while let (Some(h), Some(l)) = (hex_bytes.next(), hex_bytes.next()) {
+        bytes.push(h << 4 | l)
+    }
+    bytes
+}
+
+fn sk_from_hex(hex_str: &str) -> Result<SecretKey, String> {
+    let sk_bytes = parse_hex(&hex_str);
+    bincode::deserialize(&sk_bytes)
+        .map_err(|_| "Failed to deserialize provided secret key".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app};
     use safe_core::ipc::req::IpcReq;
     use safe_core::ipc::Permission;
     use std::collections::{BTreeSet, HashMap};
+    use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
+
+    fn gen_random_sk_hex() -> String {
+        let sk = SecretKey::random();
+        let sk_serialised = bincode::serialize(&SerdeSecret(&sk))
+            .expect("Failed to serialise the generated secret key");
+        sk_serialised.iter().map(|b| format!("{:02x}", b)).collect()
+    }
 
     // The app auth request strings encode the following app info:
     /*
@@ -640,18 +689,19 @@ mod tests {
 
     #[test]
     fn account_creation_and_login_test() {
+        let sk = &gen_random_sk_hex();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
         // successfully create an account
-        let acc_created = create_acc("anInvite", my_secret, my_password);
+        let acc_created = create_acc(sk, my_secret, my_password);
         match acc_created {
             Ok(_) => assert!(true),
             Err(err) => panic!(err),
         }
 
         // fail to create an account with same secret
-        let acc_not_created = create_acc("anInvite", my_secret, my_password);
+        let acc_not_created = create_acc(sk, my_secret, my_password);
         match acc_not_created {
             Ok(_) => panic!("Account shouldn't have been created successfully"),
             Err(err) => assert_eq!(err, "Failed to create an account: CoreError(Account exists - CoreError::RoutingClientError -> AccountExists)"),
@@ -683,10 +733,11 @@ mod tests {
 
     #[test]
     fn authorise_apps_tests() {
+        let sk = &gen_random_sk_hex();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
+        let auth = unwrap!(create_acc(sk, my_secret, my_password));
 
         // fail to authorise app with invalid request
         let invalid_auth_req = "fddfds";
@@ -755,10 +806,11 @@ mod tests {
 
     #[test]
     fn deny_authorisation_reqs_tests() {
+        let sk = &gen_random_sk_hex();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
+        let auth = unwrap!(create_acc(sk, my_secret, my_password));
 
         // verify app info passed to allow/deny callback for auth requests, and verify the AuthDenied response
         let auth_denied_encoded_response = "bAEAAAAEXVK4SGAAAAAAACAAAAAAAAAAAAE";
@@ -822,10 +874,11 @@ mod tests {
 
     #[test]
     fn acc_info_tests() {
+        let sk = &gen_random_sk_hex();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
+        let auth = unwrap!(create_acc(sk, my_secret, my_password));
 
         // verify the PUTs consumed in creating an account by fetching the account info
         let acc_info = acc_info(&auth);
@@ -840,10 +893,11 @@ mod tests {
 
     #[test]
     fn authed_apps_tests() {
+        let sk = &gen_random_sk_hex();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
+        let auth = unwrap!(create_acc(sk, my_secret, my_password));
 
         // list of authorised apps shall be empty with a freshly created account
         let authed_apps_res = authed_apps(&auth);
@@ -903,10 +957,11 @@ mod tests {
 
     #[test]
     fn revoke_app_tests() {
+        let sk = &gen_random_sk_hex();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
-        let auth = unwrap!(create_acc("anInvite", my_secret, my_password));
+        let auth = unwrap!(create_acc(sk, my_secret, my_password));
 
         // after revoking an app it is removed from the list retrieved by authed_apps
         authorise_app(&auth, APP_AUTH_REQ, &|_| true)

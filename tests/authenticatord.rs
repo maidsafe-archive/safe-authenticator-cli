@@ -12,8 +12,16 @@ use rand::distributions::Alphanumeric;
 use rand::Rng;
 use std::process::{Child, Command};
 use std::{thread, time};
+use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
 
 static AUTHED_REQ: &str = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
+
+fn gen_random_sk_hex() -> String {
+    let sk = SecretKey::random();
+    let sk_serialised = bincode::serialize(&SerdeSecret(&sk))
+        .expect("Failed to serialise the generated secret key");
+    sk_serialised.iter().map(|b| format!("{:02x}", b)).collect()
+}
 
 fn init_server(port: u16) -> Child {
     let rand_string: String = rand::thread_rng()
@@ -31,8 +39,8 @@ fn init_server(port: u16) -> Child {
             "--allow-all-auth",
             "--daemon",
             &port.to_string(),
-            "--invite-token",
-            &rand_string,
+            "--sk",
+            &gen_random_sk_hex(),
         ])
         .spawn()
         .expect("Authenticator process failed to start");

@@ -28,9 +28,9 @@ pub struct CmdArgs {
     /// The encoded authorisation request string
     #[structopt(short = "r", long = "req")]
     req_str: Option<String>,
-    /// The invitation token for creating a new SAFE Network account
-    #[structopt(short = "i", long = "invite-token")]
-    invite: Option<String>,
+    /// The secret key to be used as the default spendable balance that will get created in the new SAFE Network account
+    #[structopt(long = "sk")]
+    sk: Option<String>,
     /// Get account's balance
     #[structopt(short = "b", long = "balance")]
     balance: bool,
@@ -70,12 +70,12 @@ pub fn run() -> Result<(), String> {
     );
     config_file_handler::set_additional_search_path(&crust_config_path);
 
-    // If an invite token is provided, create a SAFE account, otherwise
+    // If secret key is provided, create a SAFE account, otherwise
     // just login. In both cases we use the instantiated authenticator
     // for all subsequent operations, even for the daemon services.
     let authenticator: Authenticator;
-    if let Some(invite) = &args.invite {
-        authenticator = create_acc(&invite, &login_details.secret, &login_details.password)?;
+    if let Some(sk) = &args.sk {
+        authenticator = create_acc(&sk, &login_details.secret, &login_details.password)?;
         if args.pretty {
             println!("Account was created successfully!");
         }
