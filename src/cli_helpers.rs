@@ -12,9 +12,9 @@ extern crate serde_json;
 
 use log::info;
 use prettytable::Table;
-use routing::Action;
 use safe_auth::AuthedAppsList;
 use safe_core::ipc::req::IpcReq;
+use safe_nd::MDataAction;
 use serde::Deserialize;
 use std::fs;
 use std::io::{stdin, stdout, Write};
@@ -191,26 +191,22 @@ pub fn prompt_to_allow_auth(req: IpcReq) -> bool {
             let mut row = String::from("");
             for mdata in share_mdata_req.mdata.iter() {
                 row += &format!("Type tag: {}\nXoR name: {:?}", mdata.type_tag, mdata.name);
-                let insert_perm = if mdata.perms.is_allowed(Action::Insert).unwrap_or(false) {
+                let insert_perm = if mdata.perms.is_allowed(MDataAction::Insert) {
                     " Insert"
                 } else {
                     ""
                 };
-                let update_perm = if mdata.perms.is_allowed(Action::Update).unwrap_or(false) {
+                let update_perm = if mdata.perms.is_allowed(MDataAction::Update) {
                     " Update"
                 } else {
                     ""
                 };
-                let delete_perm = if mdata.perms.is_allowed(Action::Delete).unwrap_or(false) {
+                let delete_perm = if mdata.perms.is_allowed(MDataAction::Delete) {
                     " Delete"
                 } else {
                     ""
                 };
-                let manage_perm = if mdata
-                    .perms
-                    .is_allowed(Action::ManagePermissions)
-                    .unwrap_or(false)
-                {
+                let manage_perm = if mdata.perms.is_allowed(MDataAction::ManagePermissions) {
                     " ManagePermissions"
                 } else {
                     ""

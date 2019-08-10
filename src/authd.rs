@@ -45,7 +45,7 @@ fn configure_services(cfg: &mut web::ServiceConfig) {
         web::get().to(|| HttpResponse::Ok().body("SAFE Authenticator service is up and running!")),
     ));
     cfg.service(
-        web::resource("/create/{secret}/{password}/{invite}")
+        web::resource("/create/{secret}/{password}/{sk}")
             .route(web::post().to(authd_create_acc)),
     );
     cfg.service(web::resource("/login/{secret}/{password}").route(web::post().to(authd_login)));
@@ -132,6 +132,14 @@ mod tests {
     use safe_auth::create_acc;
     use std::str::from_utf8;
     use std::sync::{Arc, Mutex};
+    use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
+
+    fn gen_random_sk_hex() -> String {
+        let sk = SecretKey::random();
+        let sk_serialised = bincode::serialize(&SerdeSecret(&sk))
+            .expect("Failed to serialise the generated secret key");
+        sk_serialised.iter().map(|b| format!("{:02x}", b)).collect()
+    }
 
     macro_rules! create_test_service {
         ($authenticator:expr) => {
@@ -174,9 +182,9 @@ mod tests {
         let mut rng = rand::thread_rng();
         let secret: u32 = rng.gen();
         let password: u32 = rng.gen();
-        let invite: u16 = rng.gen();
+        let sk = &gen_random_sk_hex();
         let mut srv = create_test_service!(None);
-        let endpoint = format!("/create/{}/{}/{}", secret, password, invite);
+        let endpoint = format!("/create/{}/{}/{}", secret, password, sk);
         let request = test::TestRequest::post().uri(&endpoint).to_request();
         let response = test::read_response(&mut srv, request);
         let body = unwrap!(from_utf8(&response));
@@ -188,9 +196,9 @@ mod tests {
         let mut rng = rand::thread_rng();
         let secret: u32 = rng.gen();
         let password: u32 = rng.gen();
-        let invite: u16 = rng.gen();
+        let sk = &gen_random_sk_hex();
         let mut srv = create_test_service!(None);
-        let create_acc_endpoint = format!("/create/{}/{}/{}", secret, password, invite);
+        let create_acc_endpoint = format!("/create/{}/{}/{}", secret, password, sk);
         let request = test::TestRequest::post()
             .uri(&create_acc_endpoint)
             .to_request();
@@ -210,10 +218,10 @@ mod tests {
         fn random_str() -> String {
             (0..4).map(|_| rand::random::<char>()).collect()
         }
-        let invite = &(random_str());
+        let sk = &gen_random_sk_hex();
         let secret = &(random_str());
         let password = &(random_str());
-        let authenticator = unwrap!(create_acc(invite, secret, password));
+        let authenticator = unwrap!(create_acc(sk, secret, password));
 
         let mut srv = create_test_service!(Some(authenticator));
         let endpoint = "/authorise/bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";

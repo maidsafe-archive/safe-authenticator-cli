@@ -15,8 +15,9 @@ use rand::{thread_rng, Rng};
 use std::fs;
 use std::io::Write;
 use std::process::Command;
+use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
 
-static PRETTY_ACCOUNT_CREATION_RESPONSE: &str = "Account was created successfully!\n";
+static PRETTY_ACCOUNT_CREATION_RESPONSE: &str = "Account was created successfully!";
 static PRETTY_LOGIN_RESPONSE: &str = "Logged in the SAFE Network successfully!\n";
 static UNAUTHED_REQ: &str = "bAAAAAAGY45BPQAQAAAAAGAAAAAAAAAAAAEBAGAI";
 static UNAUTHED_RESPONSE: &str = "bAEAAAAGY45BPQAQAAAAAAAAAAAAAAAAAAAAAAAAB\n"; // \n added to string with println!
@@ -26,15 +27,21 @@ static AUTHED_RESPONSE_START: &str = "bAEAAAAEXVK4SG";
 
 static CONFIG_FILE: &str = "./tests/test.config.json";
 
+fn gen_random_sk_hex() -> String {
+    let sk = SecretKey::random();
+    let sk_serialised = bincode::serialize(&SerdeSecret(&sk))
+        .expect("Failed to serialise the generated secret key");
+    sk_serialised.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
 #[test]
 fn calling_safe_create_acc() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
-    let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
 
     cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .args(&vec![
-            "--invite-token",
-            &rand_string,
+            "--sk",
+            &gen_random_sk_hex(),
             "--config",
             &CONFIG_FILE,
         ])
@@ -45,12 +52,11 @@ fn calling_safe_create_acc() {
 #[test]
 fn calling_safe_create_acc_with_env_vars() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
-    let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
 
     cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .env("SAFE_AUTH_SECRET", "something")
         .env("SAFE_AUTH_PASSWORD", "else")
-        .args(&vec!["--invite-token", &rand_string])
+        .args(&vec!["--sk", &gen_random_sk_hex()])
         .assert()
         .success();
 }
@@ -58,17 +64,16 @@ fn calling_safe_create_acc_with_env_vars() {
 #[test]
 fn calling_safe_create_acc_with_only_one_env_var() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
-    let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
 
     cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .env("SAFE_AUTH_SECRET", "something")
-        .args(&vec!["--invite-token", &rand_string])
+        .args(&vec!["--sk", &gen_random_sk_hex()])
         .assert()
         .failure();
 
     cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .env("SAFE_AUTH_PASSWORD", "something")
-        .args(&vec!["--invite-token", &rand_string])
+        .args(&vec!["--sk", &gen_random_sk_hex()])
         .assert()
         .failure();
 }
@@ -80,8 +85,8 @@ fn can_login_with_config_file() {
     auth_cmd
         .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .args(&vec![
-            "--invite-token",
-            "aaaa",
+            "--sk",
+            &gen_random_sk_hex(),
             "--config",
             &CONFIG_FILE,
             "-y",
@@ -98,8 +103,8 @@ fn calling_safe_auth_with_unregistered_req() {
     auth_cmd
         .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .args(&vec![
-            "--invite-token",
-            "aaaa",
+            "--sk",
+            &gen_random_sk_hex(),
             "-r",
             &UNAUTHED_REQ,
             "--config",
@@ -118,8 +123,8 @@ fn calling_safe_auth_with_registered_req() {
         .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .args(&vec![
             "--allow-all-auth",
-            "--invite-token",
-            "aaaa",
+            "--sk",
+            &gen_random_sk_hex(),
             "-r",
             &AUTHED_REQ,
             "--config",
@@ -146,7 +151,7 @@ fn create_acc_with_env_vars_log_in_with_config() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
     cmd.env("SAFE_AUTH_SECRET", rand_string.clone())
         .env("SAFE_AUTH_PASSWORD", rand_string.clone())
-        .args(&vec!["--invite-token", "aaaa"])
+        .args(&vec!["--sk", &gen_random_sk_hex()])
         .assert()
         .success();
 
