@@ -42,8 +42,7 @@ fn init_server(port: u16) -> Child {
 #[test]
 #[ignore]
 fn curl_create_account() {
-    let mut rng = rand::thread_rng();
-    let port: u16 = rng.gen();
+    let port = get_random_port();
     let mut server_process = init_server(port);
     let duration = time::Duration::from_secs(1);
     thread::sleep(duration);
@@ -68,8 +67,7 @@ fn curl_create_account() {
 #[test]
 #[ignore]
 fn curl_login() {
-    let mut rng = rand::thread_rng();
-    let port: u16 = rng.gen();
+    let port = get_random_port();
     let mut server_process = init_server(port);
     let duration = time::Duration::from_secs(1);
     thread::sleep(duration);
@@ -104,8 +102,7 @@ fn curl_login() {
 
 #[test]
 fn curl_authorise() {
-    let mut rng = rand::thread_rng();
-    let port: u16 = rng.gen();
+    let port = get_random_port();
     let mut server_process = init_server(port);
     let duration = time::Duration::from_secs(1);
     thread::sleep(duration);
@@ -114,4 +111,11 @@ fn curl_authorise() {
     let mut cmd = Command::new("curl");
     cmd.args(&vec!["-X", "GET", &endpoint]).assert().success();
     server_process.kill().expect("Process was not running");
+}
+
+fn get_random_port() -> u16 {
+    // Ports smaller than 1024 can require root access, so pick something larger.
+    let mut rng = rand::thread_rng();
+    let port: u16 = rng.gen_range(1024, 65535);
+    port
 }
