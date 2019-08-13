@@ -10,8 +10,6 @@ rust:
 matrix:
   include:
     - os: linux
-    - os: osx
-    - os: windows
       env:
         - YARN_GPG=no # otherwise this starts gpg-agent that never exits
 
