@@ -3,7 +3,8 @@ properties([
         string(name: "ARTIFACTS_BUCKET", defaultValue: "safe-jenkins-build-artifacts"),
         string(name: "CACHE_BRANCH", defaultValue: "master"),
         string(name: "DEPLOY_BUCKET", defaultValue: "safe-authenticator-cli")
-    ])
+    ]),
+    pipelineTriggers([cron(env.BRANCH_NAME == "master" ? "@midnight" : "")])
 ])
 
 stage("build & test") {
@@ -40,16 +41,19 @@ stage("deploy") {
             checkout(scm)
             sh("git fetch --tags --force")
             retrieveBuildArtifacts()
-            if (versionChangeCommit()) {
+            if (isNightlyBuild()) {
+                packageArtifactsForDeploy("nightly")
+                uploadDeployArtifacts("nightly")
+            } else if (isVersionChangeCommit()) {
                 version = sh(
                     returnStdout: true,
                     script: "grep '^version' < Cargo.toml | head -n 1 | awk '{ print \$3 }' | sed 's/\"//g'").trim()
-                packageArtifactsForDeploy(true)
+                packageArtifactsForDeploy("versioned")
                 createTag(version)
                 createGithubRelease(version)
             } else {
-                packageArtifactsForDeploy(false)
-                uploadDeployArtifacts()
+                packageArtifactsForDeploy("commit_hash")
+                uploadDeployArtifacts("commit_hash")
             }
         } else {
             echo("${env.BRANCH_NAME} does not match the deployment branch. Nothing to do.")
@@ -99,7 +103,12 @@ def retrieveBuildArtifacts() {
     }
 }
 
-def versionChangeCommit() {
+def isNightlyBuild() {
+    causes = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause')
+    return causes ? true : false
+}
+
+def isVersionChangeCommit() {
     shortCommitHash = sh(
         returnStdout: true,
         script: "git log -n 1 --no-merges --pretty=format:'%h'").trim()
@@ -109,15 +118,34 @@ def versionChangeCommit() {
     return message.startsWith("Version change")
 }
 
-def packageArtifactsForDeploy(isVersionCommit) {
-    if (isVersionCommit) {
-        sh("make package-version-artifacts-for-deploy")
-    } else {
-        sh("make package-commit_hash-artifacts-for-deploy")
+def packageArtifactsForDeploy(type) {
+    switch (type) {
+        case "nightly":
+            sh("make package-nightly-artifacts-for-deploy")
+            break
+        case "versioned":
+            sh("make package-version-artifacts-for-deploy")
+            break
+        case "commit_hash":
+            sh("make package-commit_hash-artifacts-for-deploy")
+            break
+        default:
+            error("This deployment type is not supported. Please extend for support.")
     }
 }
 
-def uploadDeployArtifacts() {
+def uploadDeployArtifacts(type) {
+    if (type == "nightly") {
+        s3Delete(
+            bucket: "${params.DEPLOY_BUCKET}",
+            path: "safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu.tar")
+        s3Delete(
+            bucket: "${params.DEPLOY_BUCKET}",
+            path: "safe_authenticator_cli-nightly-x86_64-pc-windows-gnu.tar")
+        s3Delete(
+            bucket: "${params.DEPLOY_BUCKET}",
+            path: "safe_authenticator_cli-nightly-x86_64-apple-darwin.tar")
+    }
     withAWS(credentials: 'aws_jenkins_deploy_artifacts_user', region: 'eu-west-2') {
         def artifacts = sh(returnStdout: true, script: 'ls -1 deploy').trim().split("\\r?\\n")
         for (artifact in artifacts) {

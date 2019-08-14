@@ -117,6 +117,17 @@ package-version-artifacts-for-deploy:
 	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu.tar deploy
 	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin.tar deploy
 
+package-nightly-artifacts-for-deploy:
+	rm -f *.tar
+	rm -rf deploy
+	mkdir deploy
+	tar -C artifacts/linux/release -cvf safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu.tar safe_auth
+	tar -C artifacts/win/release -cvf safe_authenticator_cli-nightly-x86_64-pc-windows-gnu.tar safe_auth.exe
+	tar -C artifacts/macos/release -cvf safe_authenticator_cli-nightly-x86_64-apple-darwin.tar safe_auth
+	mv safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu.tar deploy
+	mv safe_authenticator_cli-nightly-x86_64-pc-windows-gnu.tar deploy
+	mv safe_authenticator_cli-nightly-x86_64-apple-darwin.tar deploy
+
 deploy-github-release:
 ifndef GITHUB_TOKEN
 	@echo "Please set GITHUB_TOKEN to the API token for a user who can create releases."
