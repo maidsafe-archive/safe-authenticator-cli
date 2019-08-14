@@ -60,13 +60,13 @@ stage("deploy") {
         }
     }
     if (env.BRANCH_NAME == "master") {
-        build(job: '../rust_cache_build-safe_auth_cli-windows', wait: false)
-        build(job: '../docker_build-safe_auth_cli_build_container', wait: false)
+        build(job: "../rust_cache_build-safe_auth_cli-windows", wait: false)
+        build(job: "../docker_build-safe_auth_cli_build_container", wait: false)
     }
 }
 
 def retrieveCache() {
-    if (!fileExists('target')) {
+    if (!fileExists("target")) {
         withEnv(["SAFE_AUTH_BRANCH=${params.CACHE_BRANCH}"]) {
             sh("make retrieve-cache")
         }
@@ -83,14 +83,14 @@ def packageBuildArtifacts(os) {
 }
 
 def uploadBuildArtifacts() {
-    withAWS(credentials: 'aws_jenkins_build_artifacts_user', region: 'eu-west-2') {
-        def artifacts = sh(returnStdout: true, script: 'ls -1 artifacts').trim().split("\\r?\\n")
+    withAWS(credentials: "aws_jenkins_build_artifacts_user", region: "eu-west-2") {
+        def artifacts = sh(returnStdout: true, script: "ls -1 artifacts").trim().split("\\r?\\n")
         for (artifact in artifacts) {
             s3Upload(
                 bucket: "${params.ARTIFACTS_BUCKET}",
                 file: artifact,
                 workingDir: "${env.WORKSPACE}/artifacts",
-                acl: 'PublicRead')
+                acl: "PublicRead")
         }
     }
 }
@@ -104,7 +104,7 @@ def retrieveBuildArtifacts() {
 }
 
 def isNightlyBuild() {
-    causes = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause')
+    causes = currentBuild.getBuildCauses("hudson.triggers.TimerTrigger$TimerTriggerCause")
     return causes ? true : false
 }
 
@@ -146,14 +146,14 @@ def uploadDeployArtifacts(type) {
             bucket: "${params.DEPLOY_BUCKET}",
             path: "safe_authenticator_cli-nightly-x86_64-apple-darwin.tar")
     }
-    withAWS(credentials: 'aws_jenkins_deploy_artifacts_user', region: 'eu-west-2') {
-        def artifacts = sh(returnStdout: true, script: 'ls -1 deploy').trim().split("\\r?\\n")
+    withAWS(credentials: "aws_jenkins_deploy_artifacts_user", region: "eu-west-2") {
+        def artifacts = sh(returnStdout: true, script: "ls -1 deploy").trim().split("\\r?\\n")
         for (artifact in artifacts) {
             s3Upload(
                 bucket: "${params.DEPLOY_BUCKET}",
                 file: artifact,
                 workingDir: "${env.WORKSPACE}/deploy",
-                acl: 'PublicRead')
+                acl: "PublicRead")
         }
     }
 }
