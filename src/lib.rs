@@ -292,43 +292,6 @@ pub fn authorise_app(
     }
 }
 
-/// # Get account info
-///
-/// Using an account already created, you can log in to
-/// the SAFE Network and get account info.
-/// Currently only PUTs balance is available, i.e. PUTs done and available.
-///
-/// ## Example
-/// ```
-/// # use safe_auth::create_acc;
-/// use safe_auth::{log_in, acc_info};
-/// # fn random_str() -> String { (0..4).map(|_| rand::random::<char>()).collect() }
-/// /// Using an already existing account's secret and password:
-/// let my_secret = "mysecretstring";
-/// let my_password = "mypassword";
-/// # let my_secret = &(random_str());
-/// # let my_password = &(random_str());
-/// # let sk = "83c055c5efdc483bd967adba5c1769daee0a17bc5fa2b6e129cd6b596c217617";
-/// # create_acc(sk, my_secret, my_password).unwrap();
-/// let authenticator = log_in(my_secret, my_password).unwrap();
-/// let acc_info = acc_info(&authenticator);
-/// match acc_info {
-///    Ok((done, available)) => assert!(true), // This should pass
-///    Err(_) => assert!(false)
-/// }
-///```
-pub fn acc_info(_authenticator: &Authenticator) -> Result<(u64, u64), String> {
-    debug!("Attempting to get account info...");
-    // TODO: perhaps we need to now change this to return the balance of the account's default CoinBalance
-    /*let acc_info = unwrap!(auth_run_helper(authenticator, move |client| client
-        .get_account_info()
-        .map_err(AuthError::from)));
-    debug!("Account's info obtained: {:?}", acc_info);
-
-    Ok((acc_info.mutations_done, acc_info.mutations_available))*/
-    Ok((0, 0))
-}
-
 /// # Get the list of applications authorised by this account
 ///
 /// Using an account already created, you can log in to
@@ -656,7 +619,7 @@ fn sk_from_hex(hex_str: &str) -> Result<SecretKey, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app};
+    use super::{authed_apps, authorise_app, create_acc, log_in, revoke_app};
     use safe_core::ipc::req::IpcReq;
     use safe_core::ipc::Permission;
     use std::collections::{BTreeSet, HashMap};
@@ -869,25 +832,6 @@ mod tests {
                 "It should have returned an AuthDenied response rather than erroing: {:?}",
                 err
             ),
-        }
-    }
-
-    #[test]
-    fn acc_info_tests() {
-        let sk = &gen_random_sk_hex();
-        let my_secret = &(random_str());
-        let my_password = &(random_str());
-
-        let auth = unwrap!(create_acc(sk, my_secret, my_password));
-
-        // verify the PUTs consumed in creating an account by fetching the account info
-        let acc_info = acc_info(&auth);
-        match acc_info {
-            Ok((done, available)) => {
-                assert_eq!(done, 10);
-                assert_eq!(available, 990);
-            }
-            Err(_) => panic!("Failed to retrieve account info"),
         }
     }
 
