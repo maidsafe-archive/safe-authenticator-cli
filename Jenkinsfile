@@ -1,3 +1,5 @@
+import hudson.triggers.TimerTrigger.TimerTriggerCause
+
 properties([
     parameters([
         string(name: "ARTIFACTS_BUCKET", defaultValue: "safe-jenkins-build-artifacts"),
@@ -103,9 +105,9 @@ def retrieveBuildArtifacts() {
     }
 }
 
+@NonCPS
 def isNightlyBuild() {
-    causes = currentBuild.getBuildCauses("hudson.triggers.TimerTrigger$TimerTriggerCause")
-    return causes ? true : false
+    return null != currentBuild.getRawBuild().getCause(TimerTriggerCause.class)
 }
 
 def isVersionChangeCommit() {
@@ -135,18 +137,18 @@ def packageArtifactsForDeploy(type) {
 }
 
 def uploadDeployArtifacts(type) {
-    if (type == "nightly") {
-        s3Delete(
-            bucket: "${params.DEPLOY_BUCKET}",
-            path: "safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu.tar")
-        s3Delete(
-            bucket: "${params.DEPLOY_BUCKET}",
-            path: "safe_authenticator_cli-nightly-x86_64-pc-windows-gnu.tar")
-        s3Delete(
-            bucket: "${params.DEPLOY_BUCKET}",
-            path: "safe_authenticator_cli-nightly-x86_64-apple-darwin.tar")
-    }
     withAWS(credentials: "aws_jenkins_deploy_artifacts_user", region: "eu-west-2") {
+        if (type == "nightly") {
+            s3Delete(
+                bucket: "${params.DEPLOY_BUCKET}",
+                path: "safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu.tar")
+            s3Delete(
+                bucket: "${params.DEPLOY_BUCKET}",
+                path: "safe_authenticator_cli-nightly-x86_64-pc-windows-gnu.tar")
+            s3Delete(
+                bucket: "${params.DEPLOY_BUCKET}",
+                path: "safe_authenticator_cli-nightly-x86_64-apple-darwin.tar")
+        }
         def artifacts = sh(returnStdout: true, script: "ls -1 deploy").trim().split("\\r?\\n")
         for (artifact in artifacts) {
             s3Upload(
