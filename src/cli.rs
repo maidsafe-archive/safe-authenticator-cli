@@ -11,7 +11,7 @@ use crate::cli_helpers::*;
 
 use config_file_handler;
 use log::{debug, warn};
-use safe_auth::{acc_info, authed_apps, authorise_app, create_acc, log_in, revoke_app};
+use safe_auth::{authed_apps, authorise_app, create_acc, log_in, revoke_app};
 use safe_authenticator::Authenticator;
 use std::env;
 use structopt::StructOpt;
@@ -31,9 +31,6 @@ pub struct CmdArgs {
     /// The secret key to be used as the default spendable balance that will get created in the new SAFE Network account
     #[structopt(long = "sk")]
     sk: Option<String>,
-    /// Get account's balance
-    #[structopt(short = "b", long = "balance")]
-    balance: bool,
     /// Get list of authorised apps
     #[structopt(short = "a", long = "apps")]
     apps: bool,
@@ -103,15 +100,6 @@ pub fn run() -> Result<(), String> {
         }
         println!("{}", auth_response);
     }
-
-    // Show the account's current balance if requested
-    if args.balance {
-        let (mutations_done, mutations_available) = acc_info(&authenticator)?;
-        if args.pretty {
-            print!("Account's current balance (PUTs done/available): ");
-        }
-        println!("{}/{}", mutations_done, mutations_available);
-    };
 
     // Handle revoke arg if provided
     if let Some(app_id) = &args.app_id {

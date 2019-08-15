@@ -45,8 +45,7 @@ fn configure_services(cfg: &mut web::ServiceConfig) {
         web::get().to(|| HttpResponse::Ok().body("SAFE Authenticator service is up and running!")),
     ));
     cfg.service(
-        web::resource("/create/{secret}/{password}/{sk}")
-            .route(web::post().to(authd_create_acc)),
+        web::resource("/create/{secret}/{password}/{sk}").route(web::post().to(authd_create_acc)),
     );
     cfg.service(web::resource("/login/{secret}/{password}").route(web::post().to(authd_login)));
     cfg.service(web::resource("/authorise/{auth_req}").route(web::get().to(authd_authorise)));

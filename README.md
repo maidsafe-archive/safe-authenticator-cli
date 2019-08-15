@@ -8,7 +8,7 @@
 # SAFE Authenticator CLI
 This crate implements a CLI (Command Line Interface) for the [safe_authenticator](https://github.com/maidsafe/safe_client_libs/tree/master/safe_authenticator) crate.
 
-The [SAFE Browser](https://github.com/maidsafe/safe_browser) provides an integrated Authenticator GUI for users to create SAFE Network accounts, log in using an existing account's credentials (secret and password), authorise applications which need to store data on the network on behalf of the user, see current account's PUT balance, as well as revoke permissions previously granted to applications.
+The [SAFE Browser](https://github.com/maidsafe/safe_browser) provides an integrated Authenticator GUI for users to create SAFE Network accounts, log in using an existing account's credentials (secret and password), authorise applications which need to store data on the network on behalf of the user, as well as revoke permissions previously granted to applications.
 
 However, there are some scenarios where having to launch the browser just to be able to have the authenticator running is not that practical. E.g., developers working on a desktop SAFE application, either during development, testing, or even debugging phase, may find it uncomfortable or overkill if all they need is just the apps credentials to connect to the SAFE Network to test the main logic of such application, and perhaps not the authorisation flow. In these scenarios having a CLI is much more flexible and easy to use as its output could also be chained with other commands and/or applications can simply execute the CLI and read the result from its `stdout` instead of having to interface with the SAFE Browser/Authenticator through the system URI protocol.
 
@@ -162,39 +162,12 @@ The expected encoded authorisation request string is the one that can be generat
 
 The output obtained from the `safe_auth` CLI command when passing a `--req` argument, can then be used by such a Nodejs application to connect to the SAFE Network with the [loginFromUri](https://docs.maidsafe.net/safe_app_nodejs/authinterface#loginFromUri) function.
 
-### Getting the account's current PUT balance
-```
-$ cargo run -- --pretty --balance
-Secret:
-Password:
-Logged in the SAFE Network successfully!
-Account's current balance (PUTs done/available): <done>/<available>
-```
-
 ### Getting the list of authorised applications
 ```
 $ cargo run -- --pretty --apps
 Secret:
 Password:
 Logged in the SAFE Network successfully!
-+---------------------------------+--------------+------------------+---------------------+
-| Authorised Applications         |              |                  |                     |
-+---------------------------------+--------------+------------------+---------------------+
-| Id                              | Name         | Vendor           | Permissions         |
-+---------------------------------+--------------+------------------+---------------------+
-| <app ID>                        | <app's name> | <vendor name>    | <app's permissions> |
-+---------------------------------+--------------+------------------+---------------------+
-| ...                                                                                     |
-+---------------------------------+--------------+------------------+---------------------+
-```
-
-### Getting the account's current PUT balance and list of authorised applications
-```
-$ cargo run -- --pretty --balance --apps
-Secret:
-Password:
-Logged in the SAFE Network successfully!
-Account's current balance (PUTs done/available): <done>/<available>
 +---------------------------------+--------------+------------------+---------------------+
 | Authorised Applications         |              |                  |                     |
 +---------------------------------+--------------+------------------+---------------------+
