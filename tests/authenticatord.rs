@@ -10,17 +10,21 @@ use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
+use safe_core::client::test_create_balance;
+use safe_nd::Coins;
 use std::process::{Child, Command};
+use std::str::FromStr;
 use std::{thread, time};
 use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
 
 static AUTHED_REQ: &str = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
 
-fn gen_random_sk_hex() -> String {
+fn gen_random_sk_hex() -> (String, SecretKey) {
     let sk = SecretKey::random();
     let sk_serialised = bincode::serialize(&SerdeSecret(&sk))
         .expect("Failed to serialise the generated secret key");
-    sk_serialised.iter().map(|b| format!("{:02x}", b)).collect()
+    let sk_hex = sk_serialised.iter().map(|b| format!("{:02x}", b)).collect();
+    (sk_hex, sk)
 }
 
 fn init_server(port: u16) -> Child {
@@ -30,6 +34,8 @@ fn init_server(port: u16) -> Child {
         .collect();
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
+    let (sk, secret_key) = gen_random_sk_hex();
+    test_create_balance(&secret_key, Coins::from_str("666").unwrap()).unwrap();
 
     let child = cmd
         .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
@@ -40,10 +46,14 @@ fn init_server(port: u16) -> Child {
             "--daemon",
             &port.to_string(),
             "--sk",
-            &gen_random_sk_hex(),
+            &sk,
         ])
         .spawn()
         .expect("Authenticator process failed to start");
+
+    let duration = time::Duration::from_secs(2);
+    thread::sleep(duration);
+
     child
 }
 
@@ -52,8 +62,6 @@ fn init_server(port: u16) -> Child {
 fn curl_create_account() {
     let port = get_random_port();
     let mut server_process = init_server(port);
-    let duration = time::Duration::from_secs(1);
-    thread::sleep(duration);
     let rand_string: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
@@ -77,8 +85,6 @@ fn curl_create_account() {
 fn curl_login() {
     let port = get_random_port();
     let mut server_process = init_server(port);
-    let duration = time::Duration::from_secs(1);
-    thread::sleep(duration);
     let rand_string: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
@@ -94,6 +100,7 @@ fn curl_login() {
         .spawn()
         .expect("Failed to start");
     child.wait().expect("failed to wait");
+    let duration = time::Duration::from_secs(1);
     thread::sleep(duration);
 
     endpoint = format!(
@@ -112,8 +119,6 @@ fn curl_login() {
 fn curl_authorise() {
     let port = get_random_port();
     let mut server_process = init_server(port);
-    let duration = time::Duration::from_secs(1);
-    thread::sleep(duration);
 
     let endpoint = format!("http://localhost:{}/authorise/{}", port, AUTHED_REQ);
     let mut cmd = Command::new("curl");

@@ -129,15 +129,19 @@ mod tests {
     use actix_web::{test, App};
     use rand::Rng;
     use safe_auth::create_acc;
+    use safe_core::client::test_create_balance;
+    use safe_nd::Coins;
     use std::str::from_utf8;
+    use std::str::FromStr;
     use std::sync::{Arc, Mutex};
     use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
 
-    fn gen_random_sk_hex() -> String {
+    fn gen_random_sk_hex() -> (String, SecretKey) {
         let sk = SecretKey::random();
         let sk_serialised = bincode::serialize(&SerdeSecret(&sk))
             .expect("Failed to serialise the generated secret key");
-        sk_serialised.iter().map(|b| format!("{:02x}", b)).collect()
+        let sk_hex = sk_serialised.iter().map(|b| format!("{:02x}", b)).collect();
+        (sk_hex, sk)
     }
 
     macro_rules! create_test_service {
@@ -181,7 +185,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         let secret: u32 = rng.gen();
         let password: u32 = rng.gen();
-        let sk = &gen_random_sk_hex();
+        let (sk, _) = &gen_random_sk_hex();
         let mut srv = create_test_service!(None);
         let endpoint = format!("/create/{}/{}/{}", secret, password, sk);
         let request = test::TestRequest::post().uri(&endpoint).to_request();
@@ -195,7 +199,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         let secret: u32 = rng.gen();
         let password: u32 = rng.gen();
-        let sk = &gen_random_sk_hex();
+        let (sk, _) = &gen_random_sk_hex();
         let mut srv = create_test_service!(None);
         let create_acc_endpoint = format!("/create/{}/{}/{}", secret, password, sk);
         let request = test::TestRequest::post()
@@ -217,7 +221,8 @@ mod tests {
         fn random_str() -> String {
             (0..4).map(|_| rand::random::<char>()).collect()
         }
-        let sk = &gen_random_sk_hex();
+        let (sk, secret_key) = &gen_random_sk_hex();
+        test_create_balance(secret_key, Coins::from_str("5").unwrap()).unwrap();
         let secret = &(random_str());
         let password = &(random_str());
         let authenticator = unwrap!(create_acc(sk, secret, password));

@@ -42,7 +42,7 @@ pub struct AuthedAppsList {
 
 // Type of the function/callback invoked for querying if an authorisation request shall be allowed.
 // All the relevant information about the authorisation request is passed as args to the callback.
-pub type AuthAllowPrompt = Fn(IpcReq) -> bool + std::marker::Send + std::marker::Sync;
+pub type AuthAllowPrompt = dyn Fn(IpcReq) -> bool + std::marker::Send + std::marker::Sync;
 
 /// # Create Account
 /// Creates a new account on the SAFE Network.
@@ -597,9 +597,9 @@ pub fn parse_hex(hex_str: &str) -> Vec<u8> {
         .as_bytes()
         .iter()
         .filter_map(|b| match b {
-            b'0'...b'9' => Some(b - b'0'),
-            b'a'...b'f' => Some(b - b'a' + 10),
-            b'A'...b'F' => Some(b - b'A' + 10),
+            b'0'..=b'9' => Some(b - b'0'),
+            b'a'..=b'f' => Some(b - b'a' + 10),
+            b'A'..=b'F' => Some(b - b'A' + 10),
             _ => None,
         })
         .fuse();
@@ -620,16 +620,20 @@ fn sk_from_hex(hex_str: &str) -> Result<SecretKey, String> {
 #[cfg(test)]
 mod tests {
     use super::{authed_apps, authorise_app, create_acc, log_in, revoke_app};
+    use safe_core::client::test_create_balance;
     use safe_core::ipc::req::IpcReq;
     use safe_core::ipc::Permission;
+    use safe_nd::Coins;
     use std::collections::{BTreeSet, HashMap};
+    use std::str::FromStr;
     use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
 
-    fn gen_random_sk_hex() -> String {
+    fn gen_random_sk_hex() -> (String, SecretKey) {
         let sk = SecretKey::random();
         let sk_serialised = bincode::serialize(&SerdeSecret(&sk))
             .expect("Failed to serialise the generated secret key");
-        sk_serialised.iter().map(|b| format!("{:02x}", b)).collect()
+        let sk_hex = sk_serialised.iter().map(|b| format!("{:02x}", b)).collect();
+        (sk_hex, sk)
     }
 
     // The app auth request strings encode the following app info:
@@ -652,7 +656,8 @@ mod tests {
 
     #[test]
     fn account_creation_and_login_test() {
-        let sk = &gen_random_sk_hex();
+        let (sk, secret_key) = &gen_random_sk_hex();
+        test_create_balance(secret_key, Coins::from_str("10").unwrap()).unwrap();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
@@ -667,7 +672,10 @@ mod tests {
         let acc_not_created = create_acc(sk, my_secret, my_password);
         match acc_not_created {
             Ok(_) => panic!("Account shouldn't have been created successfully"),
-            Err(err) => assert_eq!(err, "Failed to create an account: CoreError(Account exists - CoreError::RoutingClientError -> AccountExists)"),
+            Err(err) => assert_eq!(
+                err,
+                "Failed to create an account: SndError(LoginPacketExists)"
+            ),
         }
 
         // successfully log in
@@ -682,7 +690,7 @@ mod tests {
         let auth = log_in(other_secret, my_password);
         match auth {
             Ok(_) => panic!("Shouldn't have logged in sucessfully"),
-            Err(err) => assert_eq!(err, "Failed to log in: CoreError(No such account - CoreError::RoutingClientError -> NoSuchAccount)"),
+            Err(err) => assert_eq!(err, "Failed to log in: SndError(NoSuchLoginPacket)"),
         }
 
         // fail to log in with invalid password
@@ -690,13 +698,14 @@ mod tests {
         let auth = log_in(my_secret, other_password);
         match auth {
             Ok(_) => panic!("Shouldn't have logged in sucessfully"),
-            Err(err) => assert_eq!(err, "Failed to log in: CoreError(Symmetric decryption failure - CoreError::SymmetricDecipherFailure)"),
+            Err(err) => assert_eq!(err, "Failed to log in: SndError(AccessDenied)"),
         }
     }
 
     #[test]
     fn authorise_apps_tests() {
-        let sk = &gen_random_sk_hex();
+        let (sk, secret_key) = &gen_random_sk_hex();
+        test_create_balance(secret_key, Coins::from_str("20").unwrap()).unwrap();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
@@ -739,15 +748,15 @@ mod tests {
         }
 
         // fail to authorise share MD request for an inexisting MD
-        let shared_md_auth_req = "bAAAAAAEVVMUYEAYAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAACATQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB";
+        let shared_md_auth_req = "bAAAAAADQDSXREAYAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAACATQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI";
         let auth_response = authorise_app(&auth, shared_md_auth_req, &|_| true);
         match auth_response {
             Ok(_) => panic!("It should have failed to authorise to share MD"),
-            Err(err) => assert_eq!(err, "Failed to generate response: Core error: Routing client error -> Requested data not found"),
+            Err(err) => assert_eq!(err, "Failed to generate response: Core error: New Routing client error -> Requested data not found"),
         }
 
         // fail to authorise containers request for an inexisting container
-        let invalid_cont_auth_req = "bAAAAAAC7WYYRCAIAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAABAAAAAAAAAAAAX3JNZ3GC3DJMQBAAAAAAAAAAAABAAAAAAQAAAAAC";
+        let invalid_cont_auth_req = "bAAAAAAG5SZSKYAIAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAABAAAAAAAAAAAAX3JNZ3GC3DJMQBAAAAAAAAAAAABAAAAAAQAAAAAC";
         let auth_response = authorise_app(&auth, invalid_cont_auth_req, &|_| true);
         match auth_response {
             Ok(_) => panic!("It should have failed to authorise invalid container request"),
@@ -769,7 +778,8 @@ mod tests {
 
     #[test]
     fn deny_authorisation_reqs_tests() {
-        let sk = &gen_random_sk_hex();
+        let (sk, secret_key) = &gen_random_sk_hex();
+        test_create_balance(secret_key, Coins::from_str("30").unwrap()).unwrap();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
@@ -837,7 +847,8 @@ mod tests {
 
     #[test]
     fn authed_apps_tests() {
-        let sk = &gen_random_sk_hex();
+        let (sk, secret_key) = &gen_random_sk_hex();
+        test_create_balance(secret_key, Coins::from_str("40").unwrap()).unwrap();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
@@ -901,7 +912,8 @@ mod tests {
 
     #[test]
     fn revoke_app_tests() {
-        let sk = &gen_random_sk_hex();
+        let (sk, secret_key) = &gen_random_sk_hex();
+        test_create_balance(secret_key, Coins::from_str("50").unwrap()).unwrap();
         let my_secret = &(random_str());
         let my_password = &(random_str());
 
