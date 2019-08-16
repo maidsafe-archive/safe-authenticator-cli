@@ -15,10 +15,10 @@ log = "0.4.6"
 rpassword = "3.0.1"
 structopt = "0.2.14"
 env_logger = "0.6.0"
-safe-nd = "0.2.0"
-safe_authenticator = { git = "https://github.com/bochaco/safe_client_libs", branch = "temp-experimental" }
-safe_core = { git = "https://github.com/bochaco/safe_client_libs", branch = "temp-experimental" }
-routing = { package = "mock_routing", git = "https://github.com/bochaco/safe_client_libs", branch = "temp-experimental" }
+safe-nd = "0.2.1"
+safe_authenticator = { git = "https://github.com/bochaco/safe_client_libs", branch = "experimental-phase1" }
+safe_core = { git = "https://github.com/bochaco/safe_client_libs", branch = "experimental-phase1" }
+routing = { package = "mock_routing", git = "https://github.com/bochaco/safe_client_libs", branch = "experimental-phase1" }
 maidsafe_utilities = "0.18.0"
 futures = "0.1.25"
 rand = "0.6.5"

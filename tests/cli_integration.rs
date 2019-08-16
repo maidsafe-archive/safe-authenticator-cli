@@ -12,9 +12,12 @@ use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use safe_core::client::test_create_balance;
+use safe_nd::Coins;
 use std::fs;
 use std::io::Write;
 use std::process::Command;
+use std::str::FromStr;
 use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
 
 static PRETTY_ACCOUNT_CREATION_RESPONSE: &str = "Account was created successfully!";
@@ -27,24 +30,22 @@ static AUTHED_RESPONSE_START: &str = "bAEAAAAEXVK4SG";
 
 static CONFIG_FILE: &str = "./tests/test.config.json";
 
-fn gen_random_sk_hex() -> String {
+fn gen_random_sk_hex() -> (String, SecretKey) {
     let sk = SecretKey::random();
     let sk_serialised = bincode::serialize(&SerdeSecret(&sk))
         .expect("Failed to serialise the generated secret key");
-    sk_serialised.iter().map(|b| format!("{:02x}", b)).collect()
+    let sk_hex = sk_serialised.iter().map(|b| format!("{:02x}", b)).collect();
+    (sk_hex, sk)
 }
 
 #[test]
 fn calling_safe_create_acc() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
+    let (sk, secret_key) = gen_random_sk_hex();
+    test_create_balance(&secret_key, Coins::from_str("15").unwrap()).unwrap();
 
     cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
-        .args(&vec![
-            "--sk",
-            &gen_random_sk_hex(),
-            "--config",
-            &CONFIG_FILE,
-        ])
+        .args(&vec!["--sk", &sk, "--config", &CONFIG_FILE])
         .assert()
         .success();
 }
@@ -52,11 +53,13 @@ fn calling_safe_create_acc() {
 #[test]
 fn calling_safe_create_acc_with_env_vars() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
+    let (sk, secret_key) = gen_random_sk_hex();
+    test_create_balance(&secret_key, Coins::from_str("25").unwrap()).unwrap();
 
     cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .env("SAFE_AUTH_SECRET", "something")
         .env("SAFE_AUTH_PASSWORD", "else")
-        .args(&vec!["--sk", &gen_random_sk_hex()])
+        .args(&vec!["--sk", &sk])
         .assert()
         .success();
 }
@@ -64,16 +67,17 @@ fn calling_safe_create_acc_with_env_vars() {
 #[test]
 fn calling_safe_create_acc_with_only_one_env_var() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
+    let (sk, _) = gen_random_sk_hex();
 
     cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .env("SAFE_AUTH_SECRET", "something")
-        .args(&vec!["--sk", &gen_random_sk_hex()])
+        .args(&vec!["--sk", &sk])
         .assert()
         .failure();
 
     cmd.env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .env("SAFE_AUTH_PASSWORD", "something")
-        .args(&vec!["--sk", &gen_random_sk_hex()])
+        .args(&vec!["--sk", &sk])
         .assert()
         .failure();
 }
@@ -81,16 +85,11 @@ fn calling_safe_create_acc_with_only_one_env_var() {
 #[test]
 fn can_login_with_config_file() {
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
+    let (sk, _) = gen_random_sk_hex();
 
     auth_cmd
         .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
-        .args(&vec![
-            "--sk",
-            &gen_random_sk_hex(),
-            "--config",
-            &CONFIG_FILE,
-            "-y",
-        ])
+        .args(&vec!["--sk", &sk, "--config", &CONFIG_FILE, "-y"])
         .assert()
         .stdout(PRETTY_ACCOUNT_CREATION_RESPONSE)
         .success();
@@ -99,12 +98,13 @@ fn can_login_with_config_file() {
 #[test]
 fn calling_safe_auth_with_unregistered_req() {
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
+    let (sk, _) = gen_random_sk_hex();
 
     auth_cmd
         .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .args(&vec![
             "--sk",
-            &gen_random_sk_hex(),
+            &sk,
             "-r",
             &UNAUTHED_REQ,
             "--config",
@@ -118,13 +118,14 @@ fn calling_safe_auth_with_unregistered_req() {
 #[test]
 fn calling_safe_auth_with_registered_req() {
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
+    let (sk, _) = gen_random_sk_hex();
 
     auth_cmd
         .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .args(&vec![
             "--allow-all-auth",
             "--sk",
-            &gen_random_sk_hex(),
+            &sk,
             "-r",
             &AUTHED_REQ,
             "--config",
@@ -148,10 +149,11 @@ fn create_acc_with_env_vars_log_in_with_config() {
     file.write(login_credentials.as_bytes()).unwrap();
 
     // we create an account with these credentials
+    let (sk, _) = gen_random_sk_hex();
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
     cmd.env("SAFE_AUTH_SECRET", rand_string.clone())
         .env("SAFE_AUTH_PASSWORD", rand_string.clone())
-        .args(&vec!["--sk", &gen_random_sk_hex()])
+        .args(&vec!["--sk", &sk])
         .assert()
         .success();
 

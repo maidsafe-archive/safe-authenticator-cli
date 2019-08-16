@@ -5,7 +5,7 @@ env:
     - PATH=$PATH:$HOME/.cargo/bin
 language: rust
 rust:
-  - stable
+  - 1.37.0
 
 matrix:
   include:
