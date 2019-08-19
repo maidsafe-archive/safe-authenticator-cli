@@ -32,4 +32,4 @@ install :
   - cargo check --release --features mock-network
 
 script :
-  - cargo test --release --features mock-network
+  - cargo test --release --features mock-network --lib --test cli_integration -- --test-threads=1

@@ -27,7 +27,15 @@ fn gen_random_sk_hex() -> (String, SecretKey) {
     (sk_hex, sk)
 }
 
-fn init_server(port: u16) -> Child {
+fn get_random_port() -> u16 {
+    // Ports smaller than 1024 can require root access, so pick something larger.
+    let mut rng = rand::thread_rng();
+    let port: u16 = rng.gen_range(1024, 65535);
+    port
+}
+
+fn init_server() -> (Child, u16) {
+    let port = get_random_port();
     let rand_string: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
@@ -38,7 +46,6 @@ fn init_server(port: u16) -> Child {
     test_create_balance(&secret_key, Coins::from_str("666").unwrap()).unwrap();
 
     let child = cmd
-        .env("SAFE_MOCK_IN_MEMORY_STORAGE", "true")
         .env("SAFE_AUTH_SECRET", &rand_string)
         .env("SAFE_AUTH_PASSWORD", "password")
         .args(vec![
@@ -51,17 +58,16 @@ fn init_server(port: u16) -> Child {
         .spawn()
         .expect("Authenticator process failed to start");
 
-    let duration = time::Duration::from_secs(2);
+    // Mock-network is really slow so we need to wait to make sure the server starts
+    let duration = time::Duration::from_secs(15);
     thread::sleep(duration);
 
-    child
+    (child, port)
 }
 
 #[test]
-#[ignore]
 fn curl_create_account() {
-    let port = get_random_port();
-    let mut server_process = init_server(port);
+    let (mut server_process, port) = init_server();
     let rand_string: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
@@ -73,24 +79,20 @@ fn curl_create_account() {
     let mut cmd = Command::new("curl");
     cmd.args(&vec!["-X", "POST", &endpoint])
         .assert()
-        .stdout(predicate::str::contains(
-            "Account created and logged in to SAFE network",
-        ))
+        .stdout(predicate::str::contains("Create service not supported yet"))
         .success();
     server_process.kill().expect("Process was not running");
 }
 
 #[test]
-#[ignore]
 fn curl_login() {
-    let port = get_random_port();
-    let mut server_process = init_server(port);
+    let (mut server_process, port) = init_server();
     let rand_string: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
         .collect();
 
-    let mut endpoint = format!(
+    /*let mut endpoint = format!(
         "http://localhost:{}/create/{}/{}/{}",
         port, &rand_string, &rand_string, &rand_string
     );
@@ -101,34 +103,25 @@ fn curl_login() {
         .expect("Failed to start");
     child.wait().expect("failed to wait");
     let duration = time::Duration::from_secs(1);
-    thread::sleep(duration);
+    thread::sleep(duration);*/
 
-    endpoint = format!(
+    let endpoint = format!(
         "http://localhost:{}/login/{}/{}",
         port, &rand_string, &rand_string
     );
     let mut cmd = Command::new("curl");
-    cmd.args(&vec!["-X", "GET", &endpoint])
+    cmd.args(&vec!["-X", "POST", &endpoint])
         .assert()
-        .stdout(predicate::str::contains("Logged in to SAFE network"))
+        .stdout(predicate::str::contains("Login service not supported yet"))
         .success();
     server_process.kill().expect("Process was not running");
 }
 
 #[test]
 fn curl_authorise() {
-    let port = get_random_port();
-    let mut server_process = init_server(port);
-
+    let (mut server_process, port) = init_server();
     let endpoint = format!("http://localhost:{}/authorise/{}", port, AUTHED_REQ);
     let mut cmd = Command::new("curl");
     cmd.args(&vec!["-X", "GET", &endpoint]).assert().success();
     server_process.kill().expect("Process was not running");
-}
-
-fn get_random_port() -> u16 {
-    // Ports smaller than 1024 can require root access, so pick something larger.
-    let mut rng = rand::thread_rng();
-    let port: u16 = rng.gen_range(1024, 65535);
-    port
 }
