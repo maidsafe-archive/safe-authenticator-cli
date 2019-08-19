@@ -13,8 +13,12 @@ use config_file_handler;
 use log::{debug, warn};
 use safe_auth::{authed_apps, authorise_app, create_acc, log_in, revoke_app};
 use safe_authenticator::Authenticator;
+use safe_core::client::test_create_balance;
+use safe_nd::Coins;
 use std::env;
+use std::str::FromStr;
 use structopt::StructOpt;
+use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
 
 const DEFAULT_SEARCH_PATH: &str = "resources/";
 const CRUST_CONFIG_PATH_ENV_VAR: &str = "SAFE_CRUST_CONFIG_PATH";
@@ -31,6 +35,9 @@ pub struct CmdArgs {
     /// The secret key to be used as the default spendable balance that will get created in the new SAFE Network account
     #[structopt(long = "sk")]
     sk: Option<String>,
+    /// Create test-coins automatically and use them to pay for the account creation
+    #[structopt(long = "test-coins")]
+    test_coins: bool,
     /// Get list of authorised apps
     #[structopt(short = "a", long = "apps")]
     apps: bool,
@@ -67,11 +74,22 @@ pub fn run() -> Result<(), String> {
     );
     config_file_handler::set_additional_search_path(&crust_config_path);
 
-    // If secret key is provided, create a SAFE account, otherwise
-    // just login. In both cases we use the instantiated authenticator
+    // If secret key is provided (or --test-coins is passed), create a SAFE account,
+    // otherwise just login. In both cases we use the instantiated authenticator
     // for all subsequent operations, even for the daemon services.
     let authenticator: Authenticator;
-    if let Some(sk) = &args.sk {
+    if args.test_coins {
+        let sk = SecretKey::random();
+        let sk_serialised = bincode::serialize(&SerdeSecret(&sk))
+            .expect("Failed to serialise the generated secret key");
+        let sk_hex: String = sk_serialised.iter().map(|b| format!("{:02x}", b)).collect();
+        test_create_balance(&sk, Coins::from_str("10").unwrap()).unwrap();
+
+        authenticator = create_acc(&sk_hex, &login_details.secret, &login_details.password)?;
+        if args.pretty {
+            println!("Account was created successfully!");
+        }
+    } else if let Some(sk) = &args.sk {
         authenticator = create_acc(&sk, &login_details.secret, &login_details.password)?;
         if args.pretty {
             println!("Account was created successfully!");
