@@ -4,7 +4,8 @@ properties([
     parameters([
         string(name: "ARTIFACTS_BUCKET", defaultValue: "safe-jenkins-build-artifacts"),
         string(name: "CACHE_BRANCH", defaultValue: "master"),
-        string(name: "DEPLOY_BUCKET", defaultValue: "safe-authenticator-cli")
+        string(name: "DEPLOY_BUCKET", defaultValue: "safe-authenticator-cli"),
+        string(name: "DEPLOY_NIGHTLY", defaultValue: "false")
     ]),
     pipelineTriggers([cron(env.BRANCH_NAME == "master" ? "@midnight" : "")])
 ])
@@ -107,7 +108,8 @@ def retrieveBuildArtifacts() {
 
 @NonCPS
 def isNightlyBuild() {
-    return null != currentBuild.getRawBuild().getCause(TimerTriggerCause.class)
+    return "${params.DEPLOY_NIGHTLY}" == "true" ||
+        null != currentBuild.getRawBuild().getCause(TimerTriggerCause.class)
 }
 
 def isVersionChangeCommit() {
