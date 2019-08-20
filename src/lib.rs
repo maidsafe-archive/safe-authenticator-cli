@@ -92,7 +92,7 @@ pub fn create_acc(sk: &str, secret: &str, password: &str) -> Result<Authenticato
     debug!("Attempting to create a SAFE account...");
     let secret_key = sk_from_hex(sk)?;
     match Authenticator::create_acc(secret, password, secret_key, || {
-        eprintln!("{}", "Disconnected from network");
+        // eprintln!("{}", "Disconnected from network");
     }) {
         Ok(auth) => {
             debug!("Returning account just created");
@@ -329,7 +329,7 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
         config::list_apps(client)
             .map(move |(_, auth_cfg)| (c2.access_container(), auth_cfg))
             .and_then(move |(access_container, auth_cfg)| {
-                c3.list_mdata_entries(access_container.name(), access_container.type_tag())
+                c3.list_seq_mdata_entries(access_container.name(), access_container.type_tag())
                     .map_err(From::from)
                     .map(move |entries| (access_container, entries, auth_cfg))
             })
@@ -344,13 +344,13 @@ pub fn authed_apps(authenticator: &Authenticator) -> Result<Vec<AuthedAppsList>,
 
                     // Empty entry means it has been deleted.
                     let entry = match entries.get(&key) {
-                        Some(entry) if !entry.content.is_empty() => Some(entry),
+                        Some(entry) if !entry.data.is_empty() => Some(entry),
                         _ => None,
                     };
 
                     let mut cont_perms = Vec::new();
                     if let Some(entry) = entry {
-                        let plaintext = symmetric_decrypt(&entry.content, &app.keys.enc_key)?;
+                        let plaintext = symmetric_decrypt(&entry.data, &app.keys.enc_key)?;
                         let app_access = deserialise::<AccessContainerEntry>(&plaintext)?;
 
                         for (key, (_mdata_info, perms)) in app_access.into_iter() {
@@ -558,7 +558,7 @@ fn gen_shared_md_auth_response(
             stream::iter_ok(share_mdata_req.mdata.into_iter())
                 .map(move |mdata| {
                     client_cloned0
-                        .get_mdata_shell(mdata.name, mdata.type_tag)
+                        .get_seq_mdata_shell(mdata.name, mdata.type_tag)
                         .map(|md| (md.version(), mdata))
                 })
                 .buffer_unordered(num_mdata)
@@ -567,7 +567,7 @@ fn gen_shared_md_auth_response(
                         name: mdata.name,
                         tag: mdata.type_tag,
                     };
-                    client_cloned1.set_mdata_user_permissions_new(
+                    client_cloned1.set_mdata_user_permissions(
                         address,
                         user,
                         mdata.perms,
@@ -698,7 +698,7 @@ mod tests {
         let auth = log_in(my_secret, other_password);
         match auth {
             Ok(_) => panic!("Shouldn't have logged in sucessfully"),
-            Err(err) => assert_eq!(err, "Failed to log in: SndError(AccessDenied)"),
+            Err(err) => assert_eq!(err, "Failed to log in: CoreError(Symmetric decryption failure - CoreError::SymmetricDecipherFailure)"),
         }
     }
 
@@ -752,7 +752,10 @@ mod tests {
         let auth_response = authorise_app(&auth, shared_md_auth_req, &|_| true);
         match auth_response {
             Ok(_) => panic!("It should have failed to authorise to share MD"),
-            Err(err) => assert_eq!(err, "Failed to generate response: Core error: New Routing client error -> Requested data not found"),
+            Err(err) => assert_eq!(
+                err,
+                "Failed to generate response: Core error: Data error -> Requested data not found"
+            ),
         }
 
         // fail to authorise containers request for an inexisting container
