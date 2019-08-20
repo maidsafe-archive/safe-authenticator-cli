@@ -23,6 +23,12 @@ use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
 const DEFAULT_SEARCH_PATH: &str = "resources/";
 const CRUST_CONFIG_PATH_ENV_VAR: &str = "SAFE_CRUST_CONFIG_PATH";
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum OutputFmt {
+    Pretty,
+    Json,
+}
+
 #[derive(StructOpt, Debug)]
 /// Manage SAFE Network authorisations and accounts.
 pub struct CmdArgs {
@@ -44,9 +50,12 @@ pub struct CmdArgs {
     /// The application's ID to revoke all authorised permissions from
     #[structopt(short = "k", long = "revoke")]
     app_id: Option<String>,
-    /// Pretty print
-    #[structopt(short = "y", long = "pretty")]
-    pretty: bool,
+    /// Output data serialisation. Currently only supported 'json'
+    #[structopt(short = "o", long = "output")]
+    output_fmt: Option<String>,
+    /// Sets JSON as output serialisation format (alias of '--output json')
+    #[structopt(long = "json")]
+    output_json: bool,
     /// Port number where the Authenticator webservice shall be listening to
     #[structopt(short = "d", long = "daemon")]
     port: Option<u16>,
@@ -74,6 +83,22 @@ pub fn run() -> Result<(), String> {
     );
     config_file_handler::set_additional_search_path(&crust_config_path);
 
+    let output_fmt = if args.output_json {
+        OutputFmt::Json
+    } else {
+        let fmt = args.output_fmt.clone().unwrap_or_else(|| "".to_string());
+        match fmt.as_ref() {
+            "json" => OutputFmt::Json,
+            "" => OutputFmt::Pretty,
+            other => {
+                return Err(format!(
+                    "Output serialisation format '{}' not supported",
+                    other
+                ))
+            }
+        }
+    };
+
     // If secret key is provided (or --test-coins is passed), create a SAFE account,
     // otherwise just login. In both cases we use the instantiated authenticator
     // for all subsequent operations, even for the daemon services.
@@ -86,17 +111,17 @@ pub fn run() -> Result<(), String> {
         test_create_balance(&sk, Coins::from_str("10").unwrap()).unwrap();
 
         authenticator = create_acc(&sk_hex, &login_details.secret, &login_details.password)?;
-        if args.pretty {
+        if OutputFmt::Pretty == output_fmt {
             println!("Account was created successfully!");
         }
     } else if let Some(sk) = &args.sk {
         authenticator = create_acc(&sk, &login_details.secret, &login_details.password)?;
-        if args.pretty {
+        if OutputFmt::Pretty == output_fmt {
             println!("Account was created successfully!");
         }
     } else {
         authenticator = log_in(&login_details.secret, &login_details.password)?;
-        if args.pretty {
+        if OutputFmt::Pretty == output_fmt {
             println!("Logged in the SAFE Network successfully!");
         }
     }
@@ -113,7 +138,7 @@ pub fn run() -> Result<(), String> {
             authorise_app(&authenticator, &req, &prompt_to_allow_auth)?
         };
 
-        if args.pretty {
+        if OutputFmt::Pretty == output_fmt {
             print!("Authorisation response string: ");
         }
         println!("{}", auth_response);
@@ -122,7 +147,7 @@ pub fn run() -> Result<(), String> {
     // Handle revoke arg if provided
     if let Some(app_id) = &args.app_id {
         revoke_app(&authenticator, app_id.clone())?;
-        if args.pretty {
+        if OutputFmt::Pretty == output_fmt {
             println!("Authorised permissions were revoked for app '{}'", app_id);
         }
     }
@@ -130,7 +155,7 @@ pub fn run() -> Result<(), String> {
     // List authorised apps if requested
     if args.apps {
         let authed_apps = authed_apps(&authenticator)?;
-        if args.pretty {
+        if OutputFmt::Pretty == output_fmt {
             pretty_print_authed_apps(authed_apps);
         } else {
             parsable_list_authed_apps(authed_apps);

@@ -16,7 +16,7 @@ Simply put, this tool provides an alternative to the Authenticator that is curre
 
 ## Build
 
-In order to build this CLI from source code you need to make sure you have `rustc v1.32.0` (or higher) installed. Please take a look at this [notes about Rust installation](https://www.rust-lang.org/tools/install) if you need help with installing it. We recommend you install it with `rustup` which will install `cargo` tool since this guide makes use of it.
+In order to build this CLI from source code you need to make sure you have `rustc v1.37.0` (or higher) installed. Please take a look at this [notes about Rust installation](https://www.rust-lang.org/tools/install) if you need help with installing it. We recommend you install it with `rustup` which will install `cargo` tool since this guide makes use of it.
 
 Once Rust and its toolchain are installed, run the following commands to clone this repository and build the `safe_auth` crate (the build process may take several minutes the first time you run it on this crate):
 ```
@@ -61,8 +61,8 @@ $ cargo run -- --help
 ```
 
 The `safe_auth` output can be of two different formats:
-1. The default one that can be used by any other applications by parsing the output string obtained from the `stdout`
-2. A more verbose output which is intended for human users of the tool that can be enabled with the use of the `--pretty` argument. We are using this argument in all the examples of this guide.
+1. The default one which is intended for human users of the tool
+2. One that can be used by any other applications parsing the output string obtained from the `stdout`
 
 Apart from the output generated in the `stdout`, the `safe_auth` tool also generates logs at different levels like any other Rust application. These logs levels (`debug`, `info`, etc.) can be set by setting the `RUST_LOG` environment variable, e.g. to set `info` level:
 ```
@@ -76,16 +76,28 @@ Note that this environment variable will only persist in your current terminal u
 Now let's look at some of the features and operations supported, how they can be executed from the CLI, and how they can be combined together.
 
 ### Create a SAFE Network account
+
+In order to create a SAFE Network account we need some safecoins to pay with. Since this is still under development, we can have the authenticator CLI to generate some test-coins and use them for paying the cost of creating an account. We can do so by passing `--test-coins` flag, the safe_auth CLI will then request us to enter a secret phrase and password for the new account to be created:
 ```
-$ cargo run -- --pretty --sk <secret key hex string>
+$ cargo run -- --test-coins
+Secret:
+Password:
+Account was created successfully!
+```
+
+Alternatively, if we own some safecoins, we can provide the corresponding secret key to the safe_auth CLI to use it for paying the cost of creating the account, as well as setting it as the default payment source for the account being created:
+```
+$ cargo run -- sk <secret key hex string>
 Secret:
 Password:
 Account was created successfully!
 ```
 
 ### Log in the SAFE Network
+
+If we already have an account created, we can invoke the safe_auth CLI without any argument to login using the credentials of the existing account:
 ```
-$ cargo run -- --pretty
+$ cargo run --
 Secret:
 Password:
 Logged in the SAFE Network successfully!
@@ -105,10 +117,9 @@ It's possible (though not secure) to use a simple json file to pass `secret` and
 ```
 And so you can log in, thus:
 ```
-$ cargo run -- --pretty --config ./my.config.json
+$ cargo run -- --config ./my.config.json
 Logged in the SAFE Network successfully!
 ```
-
 
 #### Using Environment Variables
 
@@ -117,14 +128,14 @@ Another method for passing secret/password involves using the environment variab
 With those set (eg, on linux/osx: `export SAFE_AUTH_SECRET="<your secret>;"`, and `export SAFE_AUTH_PASSWORD="<your password>"`), you can then login without needing to enter login details, or pass a config file:
 
 ```
-$ cargo run -- --pretty
+$ cargo run --
 Logged in the SAFE Network successfully!
 ```
 
 Or, you can choose to pass the environment variables to the command directly (though this can be insecure):
 
 ```
-$ SAFE_AUTH_SECRET="<secret>" SAFE_AUTH_PASSWORD="<password>" cargo run -- --pretty
+$ SAFE_AUTH_SECRET="<secret>" SAFE_AUTH_PASSWORD="<password>" cargo run --
 Logged in the SAFE Network successfully!
 ```
 
@@ -132,7 +143,7 @@ Please note, that _both_ the secret and password environment variables must be s
 
 ### Authorising an application
 ```
-$ cargo run -- --pretty --req <auth req string>
+$ cargo run -- --req <auth req string>
 Secret:
 Password:
 Logged in the SAFE Network successfully!
@@ -150,12 +161,12 @@ Authorisation response string: <auth response>
 
 As you can see before each authorisation request is allowed, the user is prompted for confirmation. Optionally, this prompt can be disabled to have the `safe_auth` to automatically allow all incoming authorisation requests. We can do this by passing the `--allow-all-auth` argument in the command line:
 ```
-$ cargo run -- --pretty --allow-all-auth --req <auth req string>
+$ cargo run -- --allow-all-auth --req <auth req string>
 ```
 
 For example, the following command passes a valid encoded authorisation request as the value of the `--req` argument and it allows the authorisation to be made without prompting:
 ```
-$ cargo run -- --pretty --allow-all-auth --req bAAAAAABU6IEAEAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAADQAAAAAAAAAAC7OB2WE3DJMMAQAAAAAAAAAAAAAAAAAAI
+$ cargo run -- --allow-all-auth --req bAAAAAABU6IEAEAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAADQAAAAAAAAAAC7OB2WE3DJMMAQAAAAAAAAAAAAAAAAAAI
 ```
 
 The expected encoded authorisation request string is the one that can be generated by any application using the SAFE API, e.g. an application using the `safe_app_nodejs` would make use of the [genAuthUri](https://docs.maidsafe.net/safe_app_nodejs/authinterface#genAuthUri), [genConnUri](https://docs.maidsafe.net/safe_app_nodejs/authinterface#genConnUri), [genContainerAuthUri](https://docs.maidsafe.net/safe_app_nodejs/authinterface#genContainerAuthUri), or [genShareMDataUri](https://docs.maidsafe.net/safe_app_nodejs/authinterface#genShareMDataUri) functions to generate such encoded string.
@@ -164,7 +175,7 @@ The output obtained from the `safe_auth` CLI command when passing a `--req` argu
 
 ### Getting the list of authorised applications
 ```
-$ cargo run -- --pretty --apps
+$ cargo run -- --apps
 Secret:
 Password:
 Logged in the SAFE Network successfully!
@@ -181,7 +192,7 @@ Logged in the SAFE Network successfully!
 
 ### Revoking permissions from an application
 ```
-$ cargo run -- --pretty --revoke <app ID>
+$ cargo run -- --revoke <app ID>
 Secret:
 Password:
 Logged in the SAFE Network successfully!
