@@ -32,5 +32,5 @@ USER maidsafe:maidsafe
 ENV CARGO_TARGET_DIR=/target YARN_GPG=no RUST_BACKTRACE=1
 
 RUN rustup component add rustfmt clippy && \
-    cargo test --release --features mock-network
+    cargo test --release --features mock-network --lib --test cli_integration -- --test-threads=1
 ENTRYPOINT ["fixuid"]
