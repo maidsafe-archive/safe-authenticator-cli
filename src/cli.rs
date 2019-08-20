@@ -18,7 +18,7 @@ use safe_nd::Coins;
 use std::env;
 use std::str::FromStr;
 use structopt::StructOpt;
-use threshold_crypto::{serde_impl::SerdeSecret, SecretKey};
+use threshold_crypto::{serde_impl::SerdeSecret, SecretKey, PK_SIZE};
 
 const DEFAULT_SEARCH_PATH: &str = "resources/";
 const CRUST_CONFIG_PATH_ENV_VAR: &str = "SAFE_CRUST_CONFIG_PATH";
@@ -111,8 +111,23 @@ pub fn run() -> Result<(), String> {
         test_create_balance(&sk, Coins::from_str("10").unwrap()).unwrap();
 
         authenticator = create_acc(&sk_hex, &login_details.secret, &login_details.password)?;
+        let pk_as_bytes: [u8; PK_SIZE] = sk.public_key().to_bytes();
+        let pk_hex: String = pk_as_bytes
+            .to_vec()
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect();
         if OutputFmt::Pretty == output_fmt {
             println!("Account was created successfully!");
+            println!("SafeKey created and preloaded with test-coins. Owner key pair generated:");
+            println!("pk = {}", pk_hex);
+            println!("sk = {}", sk_hex);
+        } else {
+            println!(
+                "{}",
+                serde_json::to_string(&(pk_hex, sk_hex))
+                    .unwrap_or_else(|_| "Failed to serialise output to json".to_string())
+            );
         }
     } else if let Some(sk) = &args.sk {
         authenticator = create_acc(&sk, &login_details.secret, &login_details.password)?;
