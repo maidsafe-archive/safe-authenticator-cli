@@ -59,14 +59,14 @@ fn calling_safe_create_acc_and_login() {
     let _ = write_random_config_credentials();
 
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
-    cmd.args(&vec!["--sk", &sk, "--config", &CONFIG_FILE, "-y"])
+    cmd.args(&vec!["--sk", &sk, "--config", &CONFIG_FILE])
         .assert()
         .stdout(predicate::str::starts_with(PRETTY_ACCOUNT_CREATION_RESPONSE).from_utf8())
         .success();
 
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
     auth_cmd
-        .args(&vec!["--config", &CONFIG_FILE, "-y"])
+        .args(&vec!["--config", &CONFIG_FILE])
         .assert()
         .stdout(PRETTY_LOGIN_RESPONSE)
         .success();
@@ -79,7 +79,7 @@ fn calling_safe_create_acc_with_env_vars() {
 
     cmd.env("SAFE_AUTH_SECRET", format!("random-{}", sk))
         .env("SAFE_AUTH_PASSWORD", "password")
-        .args(&vec!["--sk", &sk, "-y"])
+        .args(&vec!["--sk", &sk])
         .assert()
         .stdout(PRETTY_ACCOUNT_CREATION_RESPONSE)
         .success();
@@ -109,7 +109,7 @@ fn calling_safe_auth_with_unregistered_req() {
     auth_cmd
         .env("SAFE_AUTH_SECRET", format!("random-{}", sk))
         .env("SAFE_AUTH_PASSWORD", "password")
-        .args(&vec!["--sk", &sk, "-r", &UNAUTHED_REQ])
+        .args(&vec!["--sk", &sk, "-r", &UNAUTHED_REQ, "--json"])
         .assert()
         .stdout(UNAUTHED_RESPONSE)
         .success();
@@ -123,7 +123,14 @@ fn calling_safe_auth_with_registered_req() {
     auth_cmd
         .env("SAFE_AUTH_SECRET", format!("random-{}", sk))
         .env("SAFE_AUTH_PASSWORD", "password")
-        .args(&vec!["--allow-all-auth", "--sk", &sk, "-r", &AUTHED_REQ])
+        .args(&vec![
+            "--allow-all-auth",
+            "--sk",
+            &sk,
+            "-r",
+            &AUTHED_REQ,
+            "--json",
+        ])
         .assert()
         .stdout(predicate::str::starts_with(AUTHED_RESPONSE_START).from_utf8())
         .success();
@@ -137,13 +144,13 @@ fn create_acc_with_env_vars_log_in_with_config() {
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
     cmd.env("SAFE_AUTH_SECRET", rand_string.clone())
         .env("SAFE_AUTH_PASSWORD", rand_string.clone())
-        .args(&vec!["--sk", &sk])
+        .args(&vec!["--sk", &sk, "--json"])
         .assert()
         .success();
 
     // and now verify it can log in if reading the same credentials from the config
     let mut cmd = Command::cargo_bin("safe_auth").unwrap();
-    cmd.args(&vec!["--pretty", "--config", &CONFIG_FILE])
+    cmd.args(&vec!["--config", &CONFIG_FILE])
         .assert()
         .stdout(predicate::str::starts_with(PRETTY_LOGIN_RESPONSE).from_utf8())
         .success();
