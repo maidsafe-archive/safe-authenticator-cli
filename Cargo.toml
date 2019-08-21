@@ -32,6 +32,7 @@ unwrap = "~1.2.0"
 config_file_handler = "~0.11.0"
 threshold_crypto = "~0.3.2"
 bincode = "1.1.4"
+self_update = "0.5.1"
 
 [features]
 mock-network = ["safe_authenticator/mock-network"]

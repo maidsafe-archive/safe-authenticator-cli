@@ -15,6 +15,7 @@ use prettytable::Table;
 use safe_auth::AuthedAppsList;
 use safe_core::ipc::req::IpcReq;
 use safe_nd::MDataAction;
+use self_update::Status;
 use serde::Deserialize;
 use std::fs;
 use std::io::{stdin, stdout, Write};
@@ -29,6 +30,42 @@ struct Environment {
 pub struct LoginDetails {
     pub secret: String,
     pub password: String,
+}
+
+pub fn update_application() -> Result<Status, Box<dyn (::std::error::Error)>> {
+    println!("Checking for updates...");
+    let target = self_update::get_target()?;
+    let releases = self_update::backends::github::ReleaseList::configure()
+        .repo_owner("maidsafe")
+        .repo_name("safe-authenticator-cli")
+        .with_target(&target)
+        .build()?
+        .fetch()?;
+    if !releases.is_empty() {
+        log::debug!("Target for update is {}", target);
+        log::debug!("Found releases: {:#?}\n", releases);
+        let bin_name = if target.contains("pc-windows") {
+            "safe_auth.exe"
+        } else {
+            "safe_auth"
+        };
+        let status = self_update::backends::github::Update::configure()?
+            .repo_owner("maidsafe")
+            .repo_name("safe-authenticator-cli")
+            .target(&target)
+            .bin_name(&bin_name)
+            .show_download_progress(true)
+            .current_version(cargo_crate_version!())
+            .build()?
+            .update()?;
+        println!("Update status: `{}`!", status.version());
+        return Ok(status);
+    }
+    println!("Current version is {}", cargo_crate_version!());
+    println!("No releases are available for updates");
+    Ok(Status::UpToDate(
+        "No releases are available for updates".to_string(),
+    ))
 }
 
 pub fn get_login_details(config_file: &Option<String>) -> Result<LoginDetails, String> {

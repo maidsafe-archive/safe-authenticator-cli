@@ -63,11 +63,21 @@ pub struct CmdArgs {
     /// otherwise the user is a prompted to allow each request individually
     #[structopt(long = "allow-all-auth")]
     allow_all: bool,
+    /// Updates the application with a newer version if any are available.
+    #[structopt(long = "update")]
+    update: bool,
 }
 
 pub fn run() -> Result<(), String> {
     // Let's first get all the arguments passed in
     let args = CmdArgs::from_args();
+
+    if args.update {
+        match update_application() {
+            Ok(_) => return Ok(()),
+            Err(e) => return Err(format!("Error performing update: {}", e)),
+        }
+    }
 
     let login_details = get_login_details(&args.config_file_str)?;
 
