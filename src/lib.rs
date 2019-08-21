@@ -140,7 +140,7 @@ pub fn create_acc(sk: &str, secret: &str, password: &str) -> Result<Authenticato
 ///```
 pub fn log_in(secret: &str, password: &str) -> Result<Authenticator, String> {
     debug!("Attempting to log in...");
-    match Authenticator::login(secret, password, || eprintln!("Disconnected from network")) {
+    match Authenticator::login(secret, password, || info!("Disconnected from network")) {
         Ok(auth) => {
             debug!("Returning logged-in Authenticator instance");
             Ok(auth)

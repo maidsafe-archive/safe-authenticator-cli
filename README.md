@@ -14,6 +14,12 @@ However, there are some scenarios where having to launch the browser just to be 
 
 Simply put, this tool provides an alternative to the Authenticator that is currently integrated in the SAFE Browser, and to its communication protocol, allowing to perform the same set of operations but through a command line user interface.
 
+## Download
+
+The latest version of the SAFE Authenticator CLI can be downloaded from the [releases page](https://github.com/maidsafe/safe-authenticator-cli/releases/latest). Once it's downloaded and unpacked, you can follow the steps in this User Guide by starting from the [Using the CLI](#using-the-cli) section further down in this document.
+
+If otherwise you prefer to build the SAFE Authenticator CLI from source code, please follow the instructions in the next two section below.
+
 ## Build
 
 In order to build this CLI from source code you need to make sure you have `rustc v1.37.0` (or higher) installed. Please take a look at this [notes about Rust installation](https://www.rust-lang.org/tools/install) if you need help with installing it. We recommend you install it with `rustup` which will install `cargo` tool since this guide makes use of it.
@@ -32,10 +38,12 @@ By default, the `safe_auth` CLI is built with [Non-Mock libraries](https://githu
 $ cargo build --features mock-network
 ```
 
-Keep in mind that when running the safe_auth CLI with `cargo run` as explained in the following sections below, please also make sure to set the `mock-network` feature if you want to use the Mock network, e.g. with the following command the `safe_auth` will try to connect and login to the Mock network:
+Keep in mind that when running the safe_auth CLI with `cargo run` as explained in the following sections below, please also make sure to set the `mock-network` feature if you want to use the `Mock` network, e.g. with the following command the `safe_auth` will try to connect, create an account with test-coins and login to the `Mock` network:
 ```
-$ cargo run --features mock-network
+$ cargo run --features mock-network -- --test-coins
 ```
+
+The base command, if built is `$ safe_auth`, or all commands can be run via `$ cargo run --features mock-network -- <command>`.
 
 ## Run tests
 
@@ -57,7 +65,7 @@ The `safe_auth` can be executed with:
 
 As any other CLI, the `safe_auth` supports the `--help` argument which outputs a help message with information on the supported arguments and options, you can get this help message with:
 ```
-$ cargo run -- --help
+$ safe_auth --help
 ```
 
 The `safe_auth` output can be of two different formats:
@@ -79,15 +87,18 @@ Now let's look at some of the features and operations supported, how they can be
 
 In order to create a SAFE Network account we need some safecoins to pay with. Since this is still under development, we can have the authenticator CLI to generate some test-coins and use them for paying the cost of creating an account. We can do so by passing `--test-coins` flag, the safe_auth CLI will then request us to enter a secret phrase and password for the new account to be created:
 ```
-$ cargo run -- --test-coins
+$ safe_auth --test-coins
 Secret:
 Password:
 Account was created successfully!
+SafeKey created and preloaded with test-coins. Owner key pair generated:
+pk = 8dc704a138a6b1fc5f1c5cab04896597e21d693f2ed7ad0bb9fd8837a0b4bf03afb4acfb7ed7d116f5490ab341bb0bf9
+sk = 496cbe0c66d6867c96bbc17a0cb23afb98f18b517a2a48ea7671b22d86639556
 ```
 
-Alternatively, if we own some safecoins, we can provide the corresponding secret key to the safe_auth CLI to use it for paying the cost of creating the account, as well as setting it as the default payment source for the account being created:
+Alternatively, if we own some safecoins on a `SafeKey` already (see the [safe_cli User Guide for details about `SafeKey`s](https://github.com/maidsafe/safe-cli#safekeys)), we can provide the corresponding secret key so the safe_auth CLI to use it for paying the cost of creating the account, as well as setting it as the default `SafeKey` for the account being created:
 ```
-$ cargo run -- sk <secret key hex string>
+$ safe_auth --sk <secret key hex string>
 Secret:
 Password:
 Account was created successfully!
@@ -97,7 +108,7 @@ Account was created successfully!
 
 If we already have an account created, we can invoke the safe_auth CLI without any argument to login using the credentials of the existing account:
 ```
-$ cargo run --
+$ safe_auth
 Secret:
 Password:
 Logged in the SAFE Network successfully!
@@ -117,7 +128,7 @@ It's possible (though not secure) to use a simple json file to pass `secret` and
 ```
 And so you can log in, thus:
 ```
-$ cargo run -- --config ./my.config.json
+$ safe_auth --config ./my.config.json
 Logged in the SAFE Network successfully!
 ```
 
@@ -128,14 +139,14 @@ Another method for passing secret/password involves using the environment variab
 With those set (eg, on linux/osx: `export SAFE_AUTH_SECRET="<your secret>;"`, and `export SAFE_AUTH_PASSWORD="<your password>"`), you can then login without needing to enter login details, or pass a config file:
 
 ```
-$ cargo run --
+$ safe_auth
 Logged in the SAFE Network successfully!
 ```
 
 Or, you can choose to pass the environment variables to the command directly (though this can be insecure):
 
 ```
-$ SAFE_AUTH_SECRET="<secret>" SAFE_AUTH_PASSWORD="<password>" cargo run --
+$ SAFE_AUTH_SECRET="<secret>" SAFE_AUTH_PASSWORD="<password>" safe_auth
 Logged in the SAFE Network successfully!
 ```
 
@@ -143,7 +154,7 @@ Please note, that _both_ the secret and password environment variables must be s
 
 ### Authorising an application
 ```
-$ cargo run -- --req <auth req string>
+$ safe_auth --req <auth req string>
 Secret:
 Password:
 Logged in the SAFE Network successfully!
@@ -161,12 +172,12 @@ Authorisation response string: <auth response>
 
 As you can see before each authorisation request is allowed, the user is prompted for confirmation. Optionally, this prompt can be disabled to have the `safe_auth` to automatically allow all incoming authorisation requests. We can do this by passing the `--allow-all-auth` argument in the command line:
 ```
-$ cargo run -- --allow-all-auth --req <auth req string>
+$ safe_auth --allow-all-auth --req <auth req string>
 ```
 
 For example, the following command passes a valid encoded authorisation request as the value of the `--req` argument and it allows the authorisation to be made without prompting:
 ```
-$ cargo run -- --allow-all-auth --req bAAAAAABU6IEAEAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAADQAAAAAAAAAAC7OB2WE3DJMMAQAAAAAAAAAAAAAAAAAAI
+$ safe_auth --allow-all-auth --req bAAAAAABU6IEAEAAAAAACMAAAAAAAAAAANZSXILTNMFUWI43BMZSS45DFON2C4YLVORUGK3TUNFRWC5DPOIXGG3DJFZUWIAILAAAAAAAAAAAF65DFON2F643DN5YGKGYAAAAAAAAAABJHK43UEBAXK5DIMVXHI2LDMF2G64RAINGESICUMVZXIEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIAAAAAAAAAAADQAAAAAAAAAAC7OB2WE3DJMMAQAAAAAAAAAAAAAAAAAAI
 ```
 
 The expected encoded authorisation request string is the one that can be generated by any application using the SAFE API, e.g. an application using the `safe_app_nodejs` would make use of the [genAuthUri](https://docs.maidsafe.net/safe_app_nodejs/authinterface#genAuthUri), [genConnUri](https://docs.maidsafe.net/safe_app_nodejs/authinterface#genConnUri), [genContainerAuthUri](https://docs.maidsafe.net/safe_app_nodejs/authinterface#genContainerAuthUri), or [genShareMDataUri](https://docs.maidsafe.net/safe_app_nodejs/authinterface#genShareMDataUri) functions to generate such encoded string.
@@ -175,7 +186,7 @@ The output obtained from the `safe_auth` CLI command when passing a `--req` argu
 
 ### Getting the list of authorised applications
 ```
-$ cargo run -- --apps
+$ safe_auth --apps
 Secret:
 Password:
 Logged in the SAFE Network successfully!
@@ -192,7 +203,7 @@ Logged in the SAFE Network successfully!
 
 ### Revoking permissions from an application
 ```
-$ cargo run -- --revoke <app ID>
+$ safe_auth --revoke <app ID>
 Secret:
 Password:
 Logged in the SAFE Network successfully!
@@ -201,7 +212,7 @@ Authorised permissions were revoked for app '<app ID>'
 
 ### Execute Authenticator service, exposing RESTful API
 ```
-$ cargo run -- --daemon 41805
+$ safe_auth --daemon 41805
 Secret:
 Password:
 Exposing service on 127.0.0.1:41805
