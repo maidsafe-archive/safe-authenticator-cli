@@ -130,8 +130,8 @@ pub fn run() -> Result<(), String> {
         if OutputFmt::Pretty == output_fmt {
             println!("Account was created successfully!");
             println!("SafeKey created and preloaded with test-coins. Owner key pair generated:");
-            println!("pk = {}", pk_hex);
-            println!("sk = {}", sk_hex);
+            println!("Public Key = {}", pk_hex);
+            println!("Secret Key = {}", sk_hex);
         } else {
             println!(
                 "{}",
