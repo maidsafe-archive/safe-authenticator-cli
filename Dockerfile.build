@@ -1,5 +1,8 @@
 FROM rust:latest
 
+# This is only referenced in the build-cache script.
+ARG build_type
+
 RUN addgroup --gid 1001 maidsafe && \
     adduser --uid 1001 --ingroup maidsafe --home /home/maidsafe --shell /bin/sh --disabled-password --gecos "" maidsafe && \
     # The parent container sets this to the 'staff' group, which causes problems
@@ -32,5 +35,5 @@ USER maidsafe:maidsafe
 ENV CARGO_TARGET_DIR=/target YARN_GPG=no RUST_BACKTRACE=1
 
 RUN rustup component add rustfmt clippy && \
-    cargo test --release --features mock-network --lib --test cli_integration -- --test-threads=1
+    bash resources/build-cache.sh
 ENTRYPOINT ["fixuid"]

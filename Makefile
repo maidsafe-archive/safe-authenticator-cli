@@ -12,10 +12,20 @@ GITHUB_REPO_NAME := safe-authenticator-cli
 build-container:
 	rm -rf target/
 	docker rmi -f maidsafe/safe-authenticator-cli-build:build
-	docker build -f Dockerfile.build -t maidsafe/safe-authenticator-cli-build:build .
+	docker build -f Dockerfile.build -t maidsafe/safe-authenticator-cli-build:build \
+		--build-arg build_type="non-dev" .
+
+build-dev-container:
+	rm -rf target/
+	docker rmi -f maidsafe/safe-cli-build:build-dev
+	docker build -f Dockerfile.build -t maidsafe/safe-authenticator-cli-build:build-dev \
+		--build-arg build_type="dev" .
 
 push-container:
 	docker push maidsafe/safe-authenticator-cli-build:build
+
+push-dev-container:
+	docker push maidsafe/safe-authenticator-cli-build:build-dev
 
 test:
 	rm -rf artifacts
