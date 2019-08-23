@@ -12,7 +12,6 @@ extern crate unwrap;
 use futures::{stream, Future, Stream};
 use log::{debug, info};
 use maidsafe_utilities::serialisation::deserialise;
-use routing::ClientError;
 use safe_authenticator::ipc::{decode_ipc_msg, update_container_perms};
 use safe_authenticator::revocation::revoke_app as safe_authenticator_revoke_app;
 use safe_authenticator::{
@@ -500,8 +499,8 @@ fn gen_cont_auth_response(
 
                         // Adding a new access container entry
                         Ok((_, None))
-                        | Err(AuthError::CoreError(CoreError::RoutingClientError(
-                            ClientError::NoSuchEntry,
+                        | Err(AuthError::CoreError(CoreError::DataError(
+                            safe_nd::Error::NoSuchEntry,
                         ))) => 0,
 
                         // Error has occurred while trying to get an
