@@ -32,6 +32,15 @@ pub struct LoginDetails {
     pub password: String,
 }
 
+#[cfg(feature = "mock-network")]
+pub fn update_application() -> Result<Status, Box<dyn (::std::error::Error)>> {
+    println!("The update command is not supported for the development build.");
+    Ok(Status::UpToDate(
+        "The update command is not supported for the development build.".to_string()
+    ))
+}
+
+#[cfg(not(feature = "mock-network"))]
 pub fn update_application() -> Result<Status, Box<dyn (::std::error::Error)>> {
     println!("Checking for updates...");
     let target = self_update::get_target()?;
