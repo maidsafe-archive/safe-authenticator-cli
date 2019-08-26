@@ -27,6 +27,37 @@ push-container:
 push-dev-container:
 	docker push maidsafe/safe-authenticator-cli-build:build-dev
 
+build:
+	rm -rf artifacts
+	mkdir artifacts
+ifeq ($(UNAME_S),Linux)
+	docker run --name "safe-authenticator-cli-build-${UUID}" \
+		-v "${PWD}":/usr/src/safe-cli:Z \
+		-u ${USER_ID}:${GROUP_ID} \
+		maidsafe/safe-authenticator-cli-build:build \
+		cargo build --release
+	docker cp "safe-authenticator-cli-build-${UUID}":/target .
+	docker rm "safe-authenticator-cli-build-${UUID}"
+else
+	cargo build --release
+endif
+	find target/release -maxdepth 1 -type f -exec cp '{}' artifacts \;
+
+build-dev:
+	rm -rf artifacts
+	mkdir artifacts
+ifeq ($(UNAME_S),Linux)
+	docker run --name "safe-authenticator-cli-build-${UUID}" -v "${PWD}":/usr/src/safe-cli:Z \
+		-u ${USER_ID}:${GROUP_ID} \
+		maidsafe/safe-authenticator-cli-build:build-dev \
+		cargo build --release --features=mock-network
+	docker cp "safe-authenticator-cli-build-${UUID}":/target .
+	docker rm "safe-authenticator-cli-build-${UUID}"
+else
+	cargo build --release --features=mock-network
+endif
+	find target/release -maxdepth 1 -type f -exec cp '{}' artifacts \;
+
 test:
 	rm -rf artifacts
 	mkdir artifacts
@@ -75,7 +106,16 @@ ifndef SAFE_AUTH_BUILD_OS
 	@echo "Valid values are 'linux' or 'windows' or 'macos'."
 	@exit 1
 endif
-	$(eval ARCHIVE_NAME := ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-${SAFE_AUTH_BUILD_OS}-x86_64.tar.gz)
+ifndef SAFE_AUTH_BUILD_TYPE
+	@echo "A value must be supplied for SAFE_AUTH_BUILD_OS."
+	@echo "Valid values are 'linux' or 'windows' or 'macos'."
+	@exit 1
+endif
+ifeq ($(SAFE_AUTH_BUILD_TYPE),dev)
+	$(eval ARCHIVE_NAME := ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth-${SAFE_AUTH_BUILD_OS}-x86_64-${SAFE_AUTH_BUILD_TYPE}.tar.gz)
+else
+	$(eval ARCHIVE_NAME := ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth-${SAFE_AUTH_BUILD_OS}-x86_64.tar.gz)
+endif
 	tar -C artifacts -zcvf ${ARCHIVE_NAME} .
 	rm artifacts/**
 	mv ${ARCHIVE_NAME} artifacts
@@ -95,15 +135,27 @@ endif
 	mkdir -p artifacts/linux/release
 	mkdir -p artifacts/win/release
 	mkdir -p artifacts/macos/release
+	mkdir -p artifacts/linux/dev
+	mkdir -p artifacts/win/dev
+	mkdir -p artifacts/macos/dev
 	aws s3 cp --no-sign-request --region eu-west-2 s3://${S3_BUCKET}/${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-linux-x86_64.tar.gz .
 	aws s3 cp --no-sign-request --region eu-west-2 s3://${S3_BUCKET}/${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-windows-x86_64.tar.gz .
 	aws s3 cp --no-sign-request --region eu-west-2 s3://${S3_BUCKET}/${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-macos-x86_64.tar.gz .
+	aws s3 cp --no-sign-request --region eu-west-2 s3://${S3_BUCKET}/${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-linux-x86_64-dev.tar.gz .
+	aws s3 cp --no-sign-request --region eu-west-2 s3://${S3_BUCKET}/${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-windows-x86_64-dev.tar.gz .
+	aws s3 cp --no-sign-request --region eu-west-2 s3://${S3_BUCKET}/${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-macos-x86_64-dev.tar.gz .
 	tar -C artifacts/linux/release -xvf ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-linux-x86_64.tar.gz
 	tar -C artifacts/win/release -xvf ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-windows-x86_64.tar.gz
 	tar -C artifacts/macos/release -xvf ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-macos-x86_64.tar.gz
+	tar -C artifacts/linux/dev -xvf ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-linux-x86_64-dev.tar.gz
+	tar -C artifacts/win/dev -xvf ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-windows-x86_64-dev.tar.gz
+	tar -C artifacts/macos/dev -xvf ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-macos-x86_64-dev.tar.gz
 	rm ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-linux-x86_64.tar.gz
 	rm ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-windows-x86_64.tar.gz
 	rm ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-macos-x86_64.tar.gz
+	rm ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-linux-x86_64-dev.tar.gz
+	rm ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-windows-x86_64-dev.tar.gz
+	rm ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-macos-x86_64-dev.tar.gz
 
 package-commit_hash-artifacts-for-deploy:
 	rm -f *.tar
