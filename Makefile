@@ -9,7 +9,7 @@ S3_BUCKET := safe-jenkins-build-artifacts
 S3_LINUX_DEPLOY_URL := https://safe-authenticator-cli.s3.amazonaws.com/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu-dev.tar
 S3_WIN_DEPLOY_URL := https://safe-authenticator-cli.s3.amazonaws.com/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu-dev.tar
 S3_MACOS_DEPLOY_URL := https://safe-authenticator-cli.s3.amazonaws.com/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin-dev.tar
-GITHUB_REPO_OWNER := maidsafe
+GITHUB_REPO_OWNER := jacderida
 GITHUB_REPO_NAME := safe-authenticator-cli
 define GITHUB_RELEASE_DESCRIPTION
 Command line interface for authenticating with the SAFE Network.
