@@ -15,7 +15,7 @@ stage("build & test") {
         node("safe_auth") {
             checkout(scm)
             sh("make test")
-            packageBuildArtifacts("linux")
+            packageBuildArtifacts("linux", "dev")
             uploadBuildArtifacts()
         }
     },
@@ -24,7 +24,7 @@ stage("build & test") {
             checkout(scm)
             retrieveCache()
             sh("make test")
-            packageBuildArtifacts("windows")
+            packageBuildArtifacts("windows", "dev")
             uploadBuildArtifacts()
         }
     },
@@ -32,7 +32,7 @@ stage("build & test") {
         node("osx") {
             checkout(scm)
             sh("make test")
-            packageBuildArtifacts("macos")
+            packageBuildArtifacts("macos", "dev")
             uploadBuildArtifacts()
         }
     },
@@ -78,9 +78,11 @@ stage("deploy") {
                 packageArtifactsForDeploy("versioned")
                 createTag(version)
                 createGithubRelease(version)
+                uploadDeployArtifacts("dev")
             } else {
                 packageArtifactsForDeploy("commit_hash")
-                uploadDeployArtifacts("commit_hash")
+                uploadDeployArtifacts("dev")
+                uploadDeployArtifacts("release")
             }
         } else {
             echo("${env.BRANCH_NAME} does not match the deployment branch. Nothing to do.")
@@ -176,12 +178,12 @@ def uploadDeployArtifacts(type) {
                 bucket: "${params.DEPLOY_BUCKET}",
                 path: "safe_authenticator_cli-nightly-x86_64-apple-darwin.tar")
         }
-        def artifacts = sh(returnStdout: true, script: "ls -1 deploy").trim().split("\\r?\\n")
+        def artifacts = sh(returnStdout: true, script: "ls -1 deploy/${type}").trim().split("\\r?\\n")
         for (artifact in artifacts) {
             s3Upload(
                 bucket: "${params.DEPLOY_BUCKET}",
                 file: artifact,
-                workingDir: "${env.WORKSPACE}/deploy",
+                workingDir: "${env.WORKSPACE}/deploy/${type}",
                 acl: "PublicRead")
         }
     }
