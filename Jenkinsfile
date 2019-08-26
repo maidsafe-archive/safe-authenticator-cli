@@ -11,7 +11,7 @@ properties([
 ])
 
 stage("build & test") {
-    parallel linux: {
+    parallel test_linux: {
         node("safe_auth") {
             checkout(scm)
             sh("make test")
@@ -19,7 +19,7 @@ stage("build & test") {
             uploadBuildArtifacts()
         }
     },
-    windows: {
+    test_windows: {
         node("windows") {
             checkout(scm)
             retrieveCache()
@@ -28,11 +28,35 @@ stage("build & test") {
             uploadBuildArtifacts()
         }
     },
-    macos: {
+    test_macos: {
         node("osx") {
             checkout(scm)
             sh("make test")
             packageBuildArtifacts("macos")
+            uploadBuildArtifacts()
+        }
+    },
+    release_linux: {
+        node("safe_auth") {
+            checkout(scm)
+            sh("make build")
+            packageBuildArtifacts("linux", "release")
+            uploadBuildArtifacts()
+        }
+    },
+    release_windows: {
+        node("windows") {
+            checkout(scm)
+            sh("make build")
+            packageBuildArtifacts("windows", "release")
+            uploadBuildArtifacts()
+        }
+    },
+    release_macos: {
+        node("osx") {
+            checkout(scm)
+            sh("make build")
+            packageBuildArtifacts("macos", "release")
             uploadBuildArtifacts()
         }
     }
@@ -76,10 +100,11 @@ def retrieveCache() {
     }
 }
 
-def packageBuildArtifacts(os) {
+def packageBuildArtifacts(os, type) {
     branch = env.CHANGE_ID?.trim() ?: env.BRANCH_NAME
     withEnv(["SAFE_AUTH_BRANCH=${branch}",
              "SAFE_AUTH_BUILD_NUMBER=${env.BUILD_NUMBER}",
+             "SAFE_AUTH_BUILD_TYPE=${type}",
              "SAFE_AUTH_BUILD_OS=${os}"]) {
         sh("make package-build-artifacts")
     }
