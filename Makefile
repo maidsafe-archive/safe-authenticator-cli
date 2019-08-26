@@ -6,8 +6,24 @@ UNAME_S := $(shell uname -s)
 PWD := $(shell echo $$PWD)
 UUID := $(shell uuidgen | sed 's/-//g')
 S3_BUCKET := safe-jenkins-build-artifacts
+S3_LINUX_DEPLOY_URL := https://safe-authenticator-cli.s3.amazonaws.com/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu-dev.tar
+S3_WIN_DEPLOY_URL := https://safe-authenticator-cli.s3.amazonaws.com/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu-dev.tar
+S3_MACOS_DEPLOY_URL := https://safe-authenticator-cli.s3.amazonaws.com/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin-dev.tar
 GITHUB_REPO_OWNER := maidsafe
 GITHUB_REPO_NAME := safe-authenticator-cli
+define GITHUB_RELEASE_DESCRIPTION
+Command line interface for authenticating with the SAFE Network.
+
+With the SAFE authenticator, users can create SAFE Network accounts, log in using existing credentials (secret and password), authorise applications which need to store data on the network on behalf of the user, and manage permissions granted to applications.
+
+There are also development versions of this release:
+[Linux](${S3_LINUX_DEPLOY_URL})
+[macOS](${S3_MACOS_DEPLOY_URL})
+[Windows](${S3_WIN_DEPLOY_URL})
+
+The development version uses a mocked SAFE network, which allows you to work against a file that mimics the network, where SafeCoins are created for local use.
+endef
+export GITHUB_RELEASE_DESCRIPTION
 
 build-container:
 	rm -rf target/
@@ -65,7 +81,7 @@ ifeq ($(UNAME_S),Linux)
 	docker run --name "safe-auth-cli-build-${UUID}" \
 		-v "${PWD}":/usr/src/safe-authenticator-cli:Z \
 		-u ${USER_ID}:${GROUP_ID} \
-		maidsafe/safe-authenticator-cli-build:build \
+		maidsafe/safe-authenticator-cli-build:build-dev \
 		cargo test --release --features mock-network --lib --test cli_integration -- --test-threads=1
 	docker cp "safe-auth-cli-build-${UUID}":/target .
 	docker rm "safe-auth-cli-build-${UUID}"
@@ -112,9 +128,9 @@ ifndef SAFE_AUTH_BUILD_TYPE
 	@exit 1
 endif
 ifeq ($(SAFE_AUTH_BUILD_TYPE),dev)
-	$(eval ARCHIVE_NAME := ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth-${SAFE_AUTH_BUILD_OS}-x86_64-${SAFE_AUTH_BUILD_TYPE}.tar.gz)
+	$(eval ARCHIVE_NAME := ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-${SAFE_AUTH_BUILD_OS}-x86_64-${SAFE_AUTH_BUILD_TYPE}.tar.gz)
 else
-	$(eval ARCHIVE_NAME := ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth-${SAFE_AUTH_BUILD_OS}-x86_64.tar.gz)
+	$(eval ARCHIVE_NAME := ${SAFE_AUTH_BRANCH}-${SAFE_AUTH_BUILD_NUMBER}-safe_auth_cli-${SAFE_AUTH_BUILD_OS}-x86_64.tar.gz)
 endif
 	tar -C artifacts -zcvf ${ARCHIVE_NAME} .
 	rm artifacts/**
@@ -160,35 +176,56 @@ endif
 package-commit_hash-artifacts-for-deploy:
 	rm -f *.tar
 	rm -rf deploy
-	mkdir deploy
+	mkdir -p deploy/dev
+	mkdir -p deploy/release
 	tar -C artifacts/linux/release -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-unknown-linux-gnu.tar safe_auth
 	tar -C artifacts/win/release -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-pc-windows-gnu.tar safe_auth.exe
 	tar -C artifacts/macos/release -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-apple-darwin.tar safe_auth
-	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-unknown-linux-gnu.tar deploy
-	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-pc-windows-gnu.tar deploy
-	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-apple-darwin.tar deploy
+	tar -C artifacts/linux/dev -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-unknown-linux-gnu-dev.tar safe_auth
+	tar -C artifacts/win/dev -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-pc-windows-gnu-dev.tar safe_auth.exe
+	tar -C artifacts/macos/dev -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-apple-darwin.tar safe_auth
+	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-unknown-linux-gnu.tar deploy/release
+	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-pc-windows-gnu.tar deploy/release
+	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-apple-darwin.tar deploy/release
+	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-unknown-linux-gnu-dev.tar deploy/dev
+	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-pc-windows-gnu-dev.tar deploy/dev
+	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-apple-darwin-dev.tar deploy/dev
 
 package-version-artifacts-for-deploy:
 	rm -f *.tar
 	rm -rf deploy
-	mkdir deploy
+	mkdir -p deploy/dev
+	mkdir -p deploy/release
 	tar -C artifacts/linux/release -cvf safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu.tar safe_auth
 	tar -C artifacts/win/release -cvf safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu.tar safe_auth.exe
 	tar -C artifacts/macos/release -cvf safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin.tar safe_auth
-	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu.tar deploy
-	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu.tar deploy
-	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin.tar deploy
+	tar -C artifacts/linux/dev -cvf safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu-dev.tar safe_auth
+	tar -C artifacts/win/dev -cvf safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu-dev.tar safe_auth.exe
+	tar -C artifacts/macos/dev -cvf safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin-dev.tar safe_auth
+	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu.tar deploy/release
+	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu.tar deploy/release
+	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin.tar deploy/release
+	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu-dev.tar deploy/dev
+	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu-dev.tar deploy/dev
+	mv safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin-dev.tar deploy/dev
 
 package-nightly-artifacts-for-deploy:
 	rm -f *.tar
 	rm -rf deploy
-	mkdir deploy
+	mkdir -p deploy/dev
+	mkdir -p deploy/release
 	tar -C artifacts/linux/release -cvf safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu.tar safe_auth
 	tar -C artifacts/win/release -cvf safe_authenticator_cli-nightly-x86_64-pc-windows-gnu.tar safe_auth.exe
 	tar -C artifacts/macos/release -cvf safe_authenticator_cli-nightly-x86_64-apple-darwin.tar safe_auth
-	mv safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu.tar deploy
-	mv safe_authenticator_cli-nightly-x86_64-pc-windows-gnu.tar deploy
-	mv safe_authenticator_cli-nightly-x86_64-apple-darwin.tar deploy
+	tar -C artifacts/linux/dev -cvf safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu-dev.tar safe_auth
+	tar -C artifacts/win/dev -cvf safe_authenticator_cli-nightly-x86_64-pc-windows-gnu-dev.tar safe_auth.exe
+	tar -C artifacts/macos/dev -cvf safe_authenticator_cli-nightly-x86_64-apple-darwin-dev.tar safe_auth
+	mv safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu.tar deploy/release
+	mv safe_authenticator_cli-nightly-x86_64-pc-windows-gnu.tar deploy/release
+	mv safe_authenticator_cli-nightly-x86_64-apple-darwin.tar deploy/release
+	mv safe_authenticator_cli-nightly-x86_64-unknown-linux-gnu-dev.tar deploy/dev
+	mv safe_authenticator_cli-nightly-x86_64-pc-windows-gnu-dev.tar deploy/dev
+	mv safe_authenticator_cli-nightly-x86_64-apple-darwin-dev.tar deploy/dev
 
 deploy-github-release:
 ifndef GITHUB_TOKEN
@@ -200,22 +237,22 @@ endif
 		--repo ${GITHUB_REPO_NAME} \
 		--tag ${SAFE_AUTH_CLI_VERSION} \
 		--name "safe-authenticator-cli" \
-		--description "Command line interface for the authenticating with the SAFE Network";
+		--description "$$GITHUB_RELEASE_DESCRIPTION";
 	github-release upload \
 		--user ${GITHUB_REPO_OWNER} \
 		--repo ${GITHUB_REPO_NAME} \
 		--tag ${SAFE_AUTH_CLI_VERSION} \
 		--name "safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu.tar" \
-		--file deploy/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu.tar;
+		--file deploy/release/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu.tar;
 	github-release upload \
 		--user ${GITHUB_REPO_OWNER} \
 		--repo ${GITHUB_REPO_NAME} \
 		--tag ${SAFE_AUTH_CLI_VERSION} \
 		--name "safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu.tar" \
-		--file deploy/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu.tar;
+		--file deploy/release/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu.tar;
 	github-release upload \
 		--user ${GITHUB_REPO_OWNER} \
 		--repo ${GITHUB_REPO_NAME} \
 		--tag ${SAFE_AUTH_CLI_VERSION} \
 		--name "safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin.tar" \
-		--file deploy/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin.tar;
+		--file deploy/release/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin.tar;
