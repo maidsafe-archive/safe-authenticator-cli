@@ -178,12 +178,15 @@ def uploadDeployArtifacts(type) {
                 bucket: "${params.DEPLOY_BUCKET}",
                 path: "safe_authenticator_cli-nightly-x86_64-apple-darwin.tar")
         }
-        def artifacts = sh(returnStdout: true, script: "ls -1 deploy/${type}").trim().split("\\r?\\n")
+        subDirectory = type == "nightly" ? "dev" : type
+        def artifacts = sh(
+            returnStdout: true, script: "ls -1 deploy/${subDirectory}").trim().split(
+                "\\r?\\n")
         for (artifact in artifacts) {
             s3Upload(
                 bucket: "${params.DEPLOY_BUCKET}",
                 file: artifact,
-                workingDir: "${env.WORKSPACE}/deploy/${type}",
+                workingDir: "${env.WORKSPACE}/deploy/${subDirectory}",
                 acl: "PublicRead")
         }
     }
