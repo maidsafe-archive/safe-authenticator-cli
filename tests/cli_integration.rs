@@ -102,6 +102,7 @@ fn calling_safe_create_acc_with_only_one_env_var() {
 }
 
 #[test]
+#[ignore]
 fn calling_safe_auth_with_unregistered_req() {
     let mut auth_cmd = Command::cargo_bin("safe_auth").unwrap();
     let sk = gen_random_sk_with_balance();
