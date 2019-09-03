@@ -5,7 +5,8 @@ properties([
         string(name: "ARTIFACTS_BUCKET", defaultValue: "safe-jenkins-build-artifacts"),
         string(name: "CACHE_BRANCH", defaultValue: "master"),
         string(name: "DEPLOY_BUCKET", defaultValue: "safe-authenticator-cli"),
-        string(name: "DEPLOY_NIGHTLY", defaultValue: "false")
+        string(name: "DEPLOY_NIGHTLY", defaultValue: "false"),
+        string(name: "CLEAN_BUILD_BRANCH", defaultValue: "master")
     ]),
     pipelineTriggers([cron(env.BRANCH_NAME == "master" ? "@midnight" : "")])
 ])
@@ -39,7 +40,8 @@ stage("build & test") {
     release_linux: {
         node("safe_auth") {
             checkout(scm)
-            sh("make build")
+            runReleaseBuild()
+            stripArtifacts()
             packageBuildArtifacts("linux", "release")
             uploadBuildArtifacts()
         }
@@ -47,7 +49,8 @@ stage("build & test") {
     release_windows: {
         node("windows") {
             checkout(scm)
-            sh("make build")
+            runReleaseBuild()
+            stripArtifacts()
             packageBuildArtifacts("windows", "release")
             uploadBuildArtifacts()
         }
@@ -55,7 +58,8 @@ stage("build & test") {
     release_macos: {
         node("osx") {
             checkout(scm)
-            sh("make build")
+            runReleaseBuild()
+            stripArtifacts()
             packageBuildArtifacts("macos", "release")
             uploadBuildArtifacts()
         }
@@ -92,6 +96,18 @@ stage("deploy") {
         build(job: "../rust_cache_build-safe_auth_cli-windows", wait: false)
         build(job: "../docker_build-safe_auth_cli_build_container", wait: false)
     }
+}
+
+def runReleaseBuild() {
+    if (env.BRANCH_NAME == "${params.CLEAN_BUILD_BRANCH}") {
+        sh("make build-clean")
+    } else {
+        sh("make build")
+    }
+}
+
+def stripArtifacts() {
+    sh("make strip-artifacts")
 }
 
 def retrieveCache() {
