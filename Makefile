@@ -6,24 +6,8 @@ UNAME_S := $(shell uname -s)
 PWD := $(shell echo $$PWD)
 UUID := $(shell uuidgen | sed 's/-//g')
 S3_BUCKET := safe-jenkins-build-artifacts
-S3_LINUX_DEPLOY_URL := https://safe-authenticator-cli.s3.amazonaws.com/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-unknown-linux-gnu-dev.tar
-S3_WIN_DEPLOY_URL := https://safe-authenticator-cli.s3.amazonaws.com/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-pc-windows-gnu-dev.tar
-S3_MACOS_DEPLOY_URL := https://safe-authenticator-cli.s3.amazonaws.com/safe_authenticator_cli-${SAFE_AUTH_CLI_VERSION}-x86_64-apple-darwin-dev.tar
 GITHUB_REPO_OWNER := maidsafe
 GITHUB_REPO_NAME := safe-authenticator-cli
-define GITHUB_RELEASE_DESCRIPTION
-Command line interface for authenticating with the SAFE Network.
-
-With the SAFE authenticator, users can create SAFE Network accounts, log in using existing credentials (secret and password), authorise applications which need to store data on the network on behalf of the user, and manage permissions granted to applications.
-
-There are also development versions of this release:
-[Linux](${S3_LINUX_DEPLOY_URL})
-[macOS](${S3_MACOS_DEPLOY_URL})
-[Windows](${S3_WIN_DEPLOY_URL})
-
-The development version uses a mocked SAFE network, which allows you to work against a file that mimics the network, where SafeCoins are created for local use.
-endef
-export GITHUB_RELEASE_DESCRIPTION
 
 build-container:
 	rm -rf target/
@@ -274,7 +258,7 @@ endif
 		--repo ${GITHUB_REPO_NAME} \
 		--tag ${SAFE_AUTH_CLI_VERSION} \
 		--name "safe-authenticator-cli" \
-		--description "$$GITHUB_RELEASE_DESCRIPTION";
+		--description "$$(./resources/get_release_description.sh ${SAFE_AUTH_CLI_VERSION})";
 	github-release upload \
 		--user ${GITHUB_REPO_OWNER} \
 		--repo ${GITHUB_REPO_NAME} \
