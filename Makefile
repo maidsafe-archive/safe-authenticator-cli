@@ -32,7 +32,7 @@ build-clean:
 	mkdir artifacts
 ifeq ($(UNAME_S),Linux)
 	docker run --name "safe-authenticator-cli-build-${UUID}" \
-		-v "${PWD}":/usr/src/safe-cli:Z \
+		-v "${PWD}":/usr/src/safe-authenticator-cli:Z \
 		-u ${USER_ID}:${GROUP_ID} \
 		maidsafe/safe-authenticator-cli-build:build \
 		bash -c "rm -rf /target/release && cargo build --release"
