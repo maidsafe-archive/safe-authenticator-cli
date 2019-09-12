@@ -193,7 +193,7 @@ package-commit_hash-artifacts-for-deploy:
 	tar -C artifacts/macos/release -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-apple-darwin.tar safe_auth
 	tar -C artifacts/linux/dev -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-unknown-linux-gnu-dev.tar safe_auth
 	tar -C artifacts/win/dev -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-pc-windows-gnu-dev.tar safe_auth.exe
-	tar -C artifacts/macos/dev -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-apple-darwin.tar safe_auth
+	tar -C artifacts/macos/dev -cvf safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-apple-darwin-dev.tar safe_auth
 	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-unknown-linux-gnu.tar deploy/release
 	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-pc-windows-gnu.tar deploy/release
 	mv safe_authenticator_cli-$$(git rev-parse --short HEAD)-x86_64-apple-darwin.tar deploy/release
