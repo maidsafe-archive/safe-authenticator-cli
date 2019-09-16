@@ -2,7 +2,7 @@
 name = "safe_auth"
 version = "0.3.0"
 description = "SAFE Authenticator CLI"
-authors = ["Hunter Lester <guilfordhunter@gmail.com>", "bochaco <gabrielviganotti@gmail.com>", "Josh Wilson <joshuef@gmail.com>"]
+authors = ["bochaco <gabrielviganotti@gmail.com>", "Josh Wilson <joshuef@gmail.com>"]
 homepage = "https://maidsafe.net"
 license = "GPL-3.0"
 publish = false
