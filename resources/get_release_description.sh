@@ -43,9 +43,9 @@ tar.gz: TAR_WIN_CHECKSUM
 EOF
 
 safe_completion_url="https:\/\/github.com\/maidsafe\/safe-cli\/releases\/download\/$version\/safe_completion.sh"
-s3_linux_deploy_url="https:\/\/safe-authenticator-cli.s3.amazonaws.com\/safe_authenticator_cli-$version-x86_64-unknown-linux-gnu-dev.zip"
-s3_win_deploy_url="https:\/\/safe-authenticator-cli.s3.amazonaws.com\/safe_authenticator_cli-$version-x86_64-pc-windows-gnu-dev.zip"
-s3_macos_deploy_url="https:\/\/safe-authenticator-cli.s3.amazonaws.com\/safe_authenticator_cli-$version-x86_64-apple-darwin-dev.zip"
+s3_linux_deploy_url="https:\/\/safe-authenticator-cli.s3.amazonaws.com\/safe_authenticator_cli-$version-x86_64-unknown-linux-gnu-dev.tar"
+s3_win_deploy_url="https:\/\/safe-authenticator-cli.s3.amazonaws.com\/safe_authenticator_cli-$version-x86_64-pc-windows-gnu-dev.tar"
+s3_macos_deploy_url="https:\/\/safe-authenticator-cli.s3.amazonaws.com\/safe_authenticator_cli-$version-x86_64-apple-darwin-dev.tar"
 zip_linux_checksum=$(sha256sum \
     "./deploy/release/safe_authenticator_cli-$version-x86_64-unknown-linux-gnu.zip" | \
     awk '{ print $1 }')
