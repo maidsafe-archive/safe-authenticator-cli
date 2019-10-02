@@ -31,6 +31,7 @@ pub enum OutputFmt {
 
 #[derive(StructOpt, Debug)]
 /// Manage SAFE Network authorisations and accounts.
+#[structopt(raw(global_settings = "&[structopt::clap::AppSettings::ColoredHelp]"))]
 pub struct CmdArgs {
     /// A config file to read secret/password from. This is a temporary convenience function, which is not recommended. (Storing login information unencrypted is not secure.)
     #[structopt(short = "c", long = "config")]
