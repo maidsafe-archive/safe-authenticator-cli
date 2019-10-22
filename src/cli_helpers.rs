@@ -36,7 +36,7 @@ pub struct LoginDetails {
 pub fn update_application() -> Result<Status, Box<dyn (::std::error::Error)>> {
     println!("The update command is not supported for the development build.");
     Ok(Status::UpToDate(
-        "The update command is not supported for the development build.".to_string()
+        "The update command is not supported for the development build.".to_string(),
     ))
 }
 
