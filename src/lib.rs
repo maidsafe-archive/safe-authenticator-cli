@@ -642,7 +642,7 @@ mod tests {
         vendor: 'MaidSafe.net Ltd'
     */
     // perms: [ ("_public", {Read} ) ]
-    static APP_AUTH_REQ: &str = "bAAAAAAEXVK4SGAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAAAAAAAAAAAAOAAAAAAAAAAAL5YHKYTMNFRQCAAAAAAAAAAAAAAAAAAB";
+    static APP_AUTH_REQ: &str = "bAAAAAACNZZQ4WAAAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAAAIBAEAAAAAAAAAAAAAB";
     // perms: [ ("_public", {Read} ), ("_music", {Insert, Update}) ]
     static CONT_AUTH_REQ: &str = "bAAAAAADLZ663OAIAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSAEAAAAAAAAAAAAYAAAAAAAAAAAX3NOVZWSYYCAAAAAAAAAAAACAAAAABAAAAAA4AAAAAAAAAAAX3QOVRGY2LDAEAAAAAAAAAAAAAAAAAAC";
 
@@ -747,7 +747,7 @@ mod tests {
         }
 
         // fail to authorise share MD request for an inexisting MD
-        let shared_md_auth_req = "bAAAAAADQDSXREAYAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAACATQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI";
+        let shared_md_auth_req = "bAAAAAAFG5WDFKAYAAAABAAAAAAAAAAAANZSXILTNMFUWI43BMZSS4Y3MNEAAQAAAAAAAAAAAKNAUMRJAINGESEAAAAAAAAAAABGWC2LEKNQWMZJONZSXIICMORSACAAAAAAAAAAACATQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI";
         let auth_response = authorise_app(&auth, shared_md_auth_req, &|_| true);
         match auth_response {
             Ok(_) => panic!("It should have failed to authorise to share MD"),
@@ -788,7 +788,7 @@ mod tests {
         let auth = unwrap!(create_acc(sk, my_secret, my_password));
 
         // verify app info passed to allow/deny callback for auth requests, and verify the AuthDenied response
-        let auth_denied_encoded_response = "bAEAAAAEXVK4SGAAAAAAACAAAAAAAAAAAAE";
+        let auth_denied_encoded_response = "bAEAAAACNZZQ4WAAAAAAACAAAAAAAAAAAAE";
         let auth_response = authorise_app(&auth, APP_AUTH_REQ, &|auth_req| {
             let (app_exchange_info, containers) = match auth_req {
                 IpcReq::Auth(app_auth_req) => {
@@ -800,11 +800,7 @@ mod tests {
             assert_eq!(app_exchange_info.id, APP_ID);
             assert_eq!(app_exchange_info.name, APP_NAME);
             assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
-            let mut perms = BTreeSet::new();
-            perms.insert(Permission::Read);
-            let mut conts = HashMap::new();
-            conts.insert("_public".to_string(), perms);
-            assert_eq!(containers, conts);
+            assert_eq!(containers, HashMap::new());
             false
         });
         match auth_response {
@@ -874,9 +870,7 @@ mod tests {
                 assert_eq!(app_exchange_info.id, APP_ID);
                 assert_eq!(app_exchange_info.name, APP_NAME);
                 assert_eq!(app_exchange_info.vendor, "MaidSafe.net Ltd");
-                let mut perms = BTreeSet::new();
-                perms.insert(Permission::Read);
-                assert_eq!(authed_vec[0].perms[0], ("_public".to_string(), perms));
+                assert!(authed_vec[0].perms.is_empty());
             }
             Err(_) => panic!("It should have retrieved the list of authorised apps"),
         }
