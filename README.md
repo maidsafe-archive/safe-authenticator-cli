@@ -8,6 +8,8 @@
 # SAFE Authenticator CLI
 This crate implements a CLI (Command Line Interface) for the [safe_authenticator](https://github.com/maidsafe/safe_client_libs/tree/master/safe_authenticator) crate.
 
+**Note this crate is no longer maintained, it has been deprecated and its functionality replaced with the SAFE Authenticator daemon which is maintained in [https://github.com/maidsafe/safe-api](https://github.com/maidsafe/safe-api).**
+
 The [SAFE Browser](https://github.com/maidsafe/safe_browser) provides an integrated Authenticator GUI for users to create SAFE Network accounts, log in using an existing account's credentials (secret and password), authorise applications which need to store data on the network on behalf of the user, as well as revoke permissions previously granted to applications.
 
 However, there are some scenarios where having to launch the browser just to be able to have the authenticator running is not that practical. E.g., developers working on a desktop SAFE application, either during development, testing, or even debugging phase, may find it uncomfortable or overkill if all they need is just the apps credentials to connect to the SAFE Network to test the main logic of such application, and perhaps not the authorisation flow. In these scenarios having a CLI is much more flexible and easy to use as its output could also be chained with other commands and/or applications can simply execute the CLI and read the result from its `stdout` instead of having to interface with the SAFE Browser/Authenticator through the system URI protocol.
